@@ -1,0 +1,65 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  rootPath  String   @unique
+  framework String?
+  files     File[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model File {
+  id          String      @id @default(uuid())
+  path        String      @unique
+  extension   String
+  size        Int
+  projectId   String?
+  project     Project?    @relation(fields: [projectId], references: [id])
+  chunks      FileChunk[]
+  indexedAt   DateTime    @default(now())
+}
+
+model FileChunk {
+  id        String   @id @default(uuid())
+  fileId    String
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  content   String
+  chunkIdx  Int
+  createdAt DateTime @default(now())
+}
+
+model Memory {
+  id        String   @id @default(uuid())
+  category  String
+  key       String
+  value     String
+  source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  toolName  String
+  riskLevel String
+  input     String
+  status    String
+  timestamp DateTime @default(now())
+}

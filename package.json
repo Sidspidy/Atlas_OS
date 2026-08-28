@@ -1,0 +1,17 @@
+{
+  "name": "atlas-os-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter @atlas-os/backend --filter @atlas-os/desktop dev",
+    "dev:electron": "pnpm --filter @atlas-os/desktop start",
+    "dev:desktop": "pnpm --filter @atlas-os/desktop dev",
+    "dev:backend": "pnpm --filter @atlas-os/backend dev",
+    "build": "pnpm --recursive run build",
+    "typecheck": "pnpm --recursive exec tsc --noEmit",
+    "test": "pnpm --recursive run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

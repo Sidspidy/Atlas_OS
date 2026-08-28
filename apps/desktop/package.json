@@ -1,0 +1,27 @@
+{
+  "name": "@atlas-os/desktop",
+  "version": "0.1.0",
+  "main": "./dist/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "dev:electron": "tsc && concurrently \"vite\" \"electron .\"",
+    "build": "tsc && vite build",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@atlas-os/shared": "workspace:*",
+    "@atlas-os/character": "workspace:*",
+    "@atlas-os/ui": "workspace:*",
+    "lucide-react": "^0.378.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "electron": "^30.0.6",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11"
+  }
+}
