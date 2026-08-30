@@ -9,21 +9,20 @@ let companionPosition: { x: number; y: number } | null = null;
 
 async function loadWindowUrl(win: BrowserWindow, url: string, hash: string = '') {
   const fullUrl = hash ? `${url}#${hash}` : url;
+  const indexPath = path.join(__dirname, '../index.html');
+
   try {
-    await win.loadURL(fullUrl);
-  } catch (err) {
-    console.log(`[Atlas Electron] Dev server http://localhost:5173 not ready yet, retrying...`);
-    setTimeout(async () => {
-      try {
-        await win.loadURL(fullUrl);
-      } catch (retryErr) {
-        // Fallback to compiled dist/index.html if available
-        const indexPath = path.join(__dirname, '../index.html');
-        if (win && !win.isDestroyed()) {
-          win.loadFile(indexPath, { hash });
-        }
-      }
-    }, 2000);
+    const res = await fetch('http://localhost:5173');
+    if (res.ok || res.status < 500) {
+      await win.loadURL(fullUrl);
+      return;
+    }
+  } catch (e) {
+    // Vite dev server not running on 5173, load compiled local file
+  }
+
+  if (win && !win.isDestroyed()) {
+    win.loadFile(indexPath, { hash });
   }
 }
 
