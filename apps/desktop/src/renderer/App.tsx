@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar.js';
 import { Header } from './components/Header.js';
 import { CommandBarModal } from './components/CommandBarModal.js';
 import { HomeView } from './views/HomeView.js';
+import { CharacterStudioView } from './views/CharacterStudioView.js';
 import { CompanionView } from './views/CompanionView.js';
 import { AskView } from './views/AskView.js';
 import { FilesView } from './views/FilesView.js';
@@ -69,6 +70,8 @@ export const App: React.FC = () => {
     switch (activeTab) {
       case 'home':
         return <HomeView />;
+      case 'character':
+        return <CharacterStudioView />;
       case 'ask':
         return <AskView initialPrompt={activePrompt} />;
       case 'files':

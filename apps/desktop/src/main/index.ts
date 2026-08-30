@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, screen, dialog, desktopCapturer } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, screen, dialog, desktopCapturer, nativeImage } from 'electron';
 import path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
@@ -6,6 +6,26 @@ let companionWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let currentState: string = 'IDLE';
 let companionPosition: { x: number; y: number } | null = null;
+
+async function loadWindowUrl(win: BrowserWindow, url: string, hash: string = '') {
+  const fullUrl = hash ? `${url}#${hash}` : url;
+  try {
+    await win.loadURL(fullUrl);
+  } catch (err) {
+    console.log(`[Atlas Electron] Dev server http://localhost:5173 not ready yet, retrying...`);
+    setTimeout(async () => {
+      try {
+        await win.loadURL(fullUrl);
+      } catch (retryErr) {
+        // Fallback to compiled dist/index.html if available
+        const indexPath = path.join(__dirname, '../index.html');
+        if (win && !win.isDestroyed()) {
+          win.loadFile(indexPath, { hash });
+        }
+      }
+    }, 2000);
+  }
+}
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -25,7 +45,7 @@ function createMainWindow() {
   });
 
   const devUrl = 'http://localhost:5173';
-  mainWindow.loadURL(devUrl);
+  loadWindowUrl(mainWindow, devUrl);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
@@ -63,8 +83,8 @@ function createCompanionWindow() {
     }
   });
 
-  const devUrl = 'http://localhost:5173#companion';
-  companionWindow.loadURL(devUrl);
+  const devUrl = 'http://localhost:5173';
+  loadWindowUrl(companionWindow, devUrl, 'companion');
 
   companionWindow.on('moved', () => {
     if (companionWindow) {
@@ -79,8 +99,14 @@ function createCompanionWindow() {
 }
 
 function createSystemTray() {
-  // Simple tray setup placeholder
-  tray = new Tray(path.join(__dirname, '../../../packages/ui/src/styles/theme.css'));
+  // Create a 16x16 clean purple pixel image icon for the System Tray
+  const iconBuffer = Buffer.from(
+    'iVBORw0KGgoAAAANSU5EUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAABMSURBVHgB7ZHBDQAgCAM5j8N5HEZyG8hKjBq1PhL+XAJBAZCSzB3cTAYgM0l+Yt8nASB3oQAwM0mSZP31x4ACoACeY+8pAMoASZJ00wO4vAFqD9xVtgAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  const trayIcon = nativeImage.createFromBuffer(iconBuffer);
+
+  tray = new Tray(trayIcon);
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Open Atlas OS', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
     { label: 'Ask Atlas', click: () => { mainWindow?.show(); mainWindow?.focus(); } },

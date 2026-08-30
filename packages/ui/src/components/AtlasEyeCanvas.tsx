@@ -75,99 +75,104 @@ export const AtlasEyeCanvas: React.FC<AtlasEyeCanvasProps> = ({
       const leftEyeCenter = { x: width * 0.3 + offsetX, y: height * 0.5 + offsetY };
       const rightEyeCenter = { x: width * 0.7 + offsetX, y: height * 0.5 + offsetY };
 
+      // Intense Neon Screen Glow
       ctx.fillStyle = config.primaryColor;
       ctx.shadowColor = config.primaryColor;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 18;
 
       if (isBlinking || config.eyeType === 'closed') {
-        // Closed / Blinking Arch Eyes
-        ctx.lineWidth = 3;
+        // Sleeping / Closed Cute Curved Eye Arches
+        ctx.lineWidth = 3.5;
         ctx.strokeStyle = config.primaryColor;
+        ctx.lineCap = 'round';
+
         ctx.beginPath();
-        ctx.arc(leftEyeCenter.x, leftEyeCenter.y, eyeSize * 0.5, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.arc(leftEyeCenter.x, leftEyeCenter.y + 2, eyeSize * 0.45, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(rightEyeCenter.x, rightEyeCenter.y, eyeSize * 0.5, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.arc(rightEyeCenter.x, rightEyeCenter.y + 2, eyeSize * 0.45, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
       } else if (config.eyeType === 'equalizer') {
-        // Listening Soundwave Equalizer
+        // Listening Equalizer Waves
         const barWidth = 4;
-        const gap = 6;
-        const totalWidth = 4 * barWidth + 3 * gap;
+        const gap = 5;
+        const totalWidth = 5 * barWidth + 4 * gap;
         const startX = (width - totalWidth) / 2;
 
-        for (let i = 0; i < 4; i++) {
-          const h = 8 + Math.sin(elapsed * 8 + i * 1.2) * 12;
+        for (let i = 0; i < 5; i++) {
+          const h = 8 + Math.sin(elapsed * 9 + i * 1.3) * 14;
           const x = startX + i * (barWidth + gap);
           const y = (height - h) / 2;
           ctx.beginPath();
-          ctx.roundRect(x, y, barWidth, h, 2);
+          ctx.roundRect(x, y, barWidth, h, 3);
           ctx.fill();
         }
       } else if (config.eyeType === 'scanning') {
-        // Thinking Scanning Rings
-        const radius = eyeSize * 0.6;
-        ctx.lineWidth = 2.5;
+        // Thinking Scanning Orbit Rings
+        const radius = eyeSize * 0.55;
+        ctx.lineWidth = 3;
         ctx.strokeStyle = config.primaryColor;
 
         ctx.beginPath();
-        ctx.arc(leftEyeCenter.x, leftEyeCenter.y, radius, elapsed * 4, elapsed * 4 + 1.5 * Math.PI);
+        ctx.arc(leftEyeCenter.x, leftEyeCenter.y, radius, elapsed * 4, elapsed * 4 + 1.4 * Math.PI);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(rightEyeCenter.x, rightEyeCenter.y, radius, -elapsed * 4, -elapsed * 4 + 1.5 * Math.PI);
+        ctx.arc(rightEyeCenter.x, rightEyeCenter.y, radius, -elapsed * 4, -elapsed * 4 + 1.4 * Math.PI);
         ctx.stroke();
       } else if (config.eyeType === 'radar') {
         // Searching Radar Sweep
-        const sweepAngle = elapsed * 3;
-        const r = eyeSize * 0.7;
+        const sweepAngle = elapsed * 3.5;
+        const r = eyeSize * 0.65;
 
         [leftEyeCenter, rightEyeCenter].forEach((center) => {
           ctx.beginPath();
           ctx.arc(center.x, center.y, r, 0, 2 * Math.PI);
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 2;
           ctx.strokeStyle = config.primaryColor;
           ctx.stroke();
 
           ctx.beginPath();
           ctx.moveTo(center.x, center.y);
-          ctx.arc(center.x, center.y, r, sweepAngle, sweepAngle + 0.5);
+          ctx.arc(center.x, center.y, r, sweepAngle, sweepAngle + 0.6);
           ctx.fillStyle = config.glowColor;
           ctx.fill();
         });
       } else if (config.eyeType === 'spinner') {
-        // Working Spinning Progress Ring
+        // Working Spinning Ring
         const angle = elapsed * 6;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = config.primaryColor;
-
-        [leftEyeCenter, rightEyeCenter].forEach((center) => {
-          ctx.beginPath();
-          ctx.arc(center.x, center.y, eyeSize * 0.6, angle, angle + 1.2 * Math.PI);
-          ctx.stroke();
-        });
-      } else if (config.eyeType === 'stars') {
-        // Success Sparkling Arch Eyes
         ctx.lineWidth = 3.5;
         ctx.strokeStyle = config.primaryColor;
 
         [leftEyeCenter, rightEyeCenter].forEach((center) => {
           ctx.beginPath();
-          ctx.arc(center.x, center.y + 4, eyeSize * 0.6, 1.1 * Math.PI, 1.9 * Math.PI);
+          ctx.arc(center.x, center.y, eyeSize * 0.55, angle, angle + 1.3 * Math.PI);
+          ctx.stroke();
+        });
+      } else if (config.eyeType === 'stars') {
+        // Success Sparkling Victory Arches
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = config.primaryColor;
+        ctx.lineCap = 'round';
+
+        [leftEyeCenter, rightEyeCenter].forEach((center) => {
+          ctx.beginPath();
+          ctx.arc(center.x, center.y + 4, eyeSize * 0.55, 1.15 * Math.PI, 1.85 * Math.PI);
           ctx.stroke();
         });
       } else if (config.eyeType === 'warning') {
-        // Warning Exclamation Eyes
+        // Warning Alert
         [leftEyeCenter, rightEyeCenter].forEach((center) => {
-          ctx.fillRect(center.x - 2, center.y - 8, 4, 10);
-          ctx.fillRect(center.x - 2, center.y + 5, 4, 4);
+          ctx.fillRect(center.x - 2.5, center.y - 9, 5, 11);
+          ctx.fillRect(center.x - 2.5, center.y + 5, 5, 5);
         });
       } else if (config.eyeType === 'error') {
-        // Error Slanted Cross Eyes
-        const sz = 6;
-        ctx.lineWidth = 3;
+        // Error Slanted Cross
+        const sz = 7;
+        ctx.lineWidth = 3.5;
         ctx.strokeStyle = config.primaryColor;
+        ctx.lineCap = 'round';
 
         [leftEyeCenter, rightEyeCenter].forEach((center) => {
           ctx.beginPath();
@@ -177,21 +182,12 @@ export const AtlasEyeCanvas: React.FC<AtlasEyeCanvasProps> = ({
           ctx.lineTo(center.x - sz, center.y + sz);
           ctx.stroke();
         });
-      } else if (config.eyeType === 'lock') {
-        // Awaiting Permission Shield/Lock Indicator
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = config.primaryColor;
-        [leftEyeCenter, rightEyeCenter].forEach((center) => {
-          ctx.strokeRect(center.x - 5, center.y - 2, 10, 8);
-          ctx.beginPath();
-          ctx.arc(center.x, center.y - 3, 3, Math.PI, 0);
-          ctx.stroke();
-        });
       } else {
-        // Default / Excited Animated Rounded Pupils
-        const currentScale = config.pupilScale + Math.sin(elapsed * 2) * 0.05;
+        // Default / Excited Animated Pupils with Dual Shimmer Glints
+        const currentScale = config.pupilScale + Math.sin(elapsed * 2.5) * 0.04;
         const currentEyeRadius = (eyeSize / 2) * currentScale;
 
+        // Outer Eye Base Circle
         ctx.beginPath();
         ctx.arc(leftEyeCenter.x, leftEyeCenter.y, currentEyeRadius, 0, 2 * Math.PI);
         ctx.fill();
@@ -200,15 +196,26 @@ export const AtlasEyeCanvas: React.FC<AtlasEyeCanvasProps> = ({
         ctx.arc(rightEyeCenter.x, rightEyeCenter.y, currentEyeRadius, 0, 2 * Math.PI);
         ctx.fill();
 
-        // White Pupil Glint
+        // Primary Pupil Glint (Top-Left)
         ctx.fillStyle = '#ffffff';
-        ctx.shadowBlur = 0;
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 4;
+
         ctx.beginPath();
-        ctx.arc(leftEyeCenter.x - currentEyeRadius * 0.3, leftEyeCenter.y - currentEyeRadius * 0.3, currentEyeRadius * 0.3, 0, 2 * Math.PI);
+        ctx.arc(leftEyeCenter.x - currentEyeRadius * 0.35, leftEyeCenter.y - currentEyeRadius * 0.35, currentEyeRadius * 0.32, 0, 2 * Math.PI);
         ctx.fill();
 
         ctx.beginPath();
-        ctx.arc(rightEyeCenter.x - currentEyeRadius * 0.3, rightEyeCenter.y - currentEyeRadius * 0.3, currentEyeRadius * 0.3, 0, 2 * Math.PI);
+        ctx.arc(rightEyeCenter.x - currentEyeRadius * 0.35, rightEyeCenter.y - currentEyeRadius * 0.35, currentEyeRadius * 0.32, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Secondary Shimmer Sparkle Glint (Bottom-Right)
+        ctx.beginPath();
+        ctx.arc(leftEyeCenter.x + currentEyeRadius * 0.35, leftEyeCenter.y + currentEyeRadius * 0.3, currentEyeRadius * 0.16, 0, 2 * Math.PI);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(rightEyeCenter.x + currentEyeRadius * 0.35, rightEyeCenter.y + currentEyeRadius * 0.3, currentEyeRadius * 0.16, 0, 2 * Math.PI);
         ctx.fill();
       }
 

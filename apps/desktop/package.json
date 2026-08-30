@@ -4,9 +4,10 @@
   "main": "./dist/main/index.js",
   "scripts": {
     "dev": "vite",
-    "dev:electron": "tsc && concurrently \"vite\" \"electron .\"",
-    "build": "tsc && vite build",
-    "start": "electron ."
+    "dev:electron": "tsc -p tsconfig.node.json && concurrently \"vite\" \"electron .\"",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "prestart": "tsc -p tsconfig.node.json",
+    "start": "tsc -p tsconfig.node.json && electron ."
   },
   "dependencies": {
     "@atlas-os/shared": "workspace:*",

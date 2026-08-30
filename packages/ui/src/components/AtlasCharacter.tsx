@@ -31,7 +31,7 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
     const centerY = rect.top + rect.height / 2;
     const tiltX = (e.clientY - centerY) / (rect.height / 2);
     const tiltY = (e.clientX - centerX) / (rect.width / 2);
-    setTilt({ x: tiltX * -8, y: tiltY * 8 });
+    setTilt({ x: tiltX * -6, y: tiltY * 6 });
   };
 
   const handleMouseLeaveWrapper = () => {
@@ -40,10 +40,10 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
   };
 
   const sizeMap = {
-    sm: { width: 100, height: 100, eyeCanvasWidth: 70, eyeCanvasHeight: 35, eyeSize: 12 },
-    md: { width: 180, height: 180, eyeCanvasWidth: 120, eyeCanvasHeight: 50, eyeSize: 20 },
-    lg: { width: 260, height: 260, eyeCanvasWidth: 170, eyeCanvasHeight: 70, eyeSize: 28 },
-    companion: { width: 150, height: 150, eyeCanvasWidth: 100, eyeCanvasHeight: 45, eyeSize: 16 }
+    sm: { width: 120, height: 80, eyeCanvasWidth: 70, eyeCanvasHeight: 35, eyeSize: 12, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' },
+    md: { width: 220, height: 147, eyeCanvasWidth: 120, eyeCanvasHeight: 50, eyeSize: 20, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' },
+    lg: { width: 320, height: 213, eyeCanvasWidth: 170, eyeCanvasHeight: 70, eyeSize: 28, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' },
+    companion: { width: 170, height: 113, eyeCanvasWidth: 100, eyeCanvasHeight: 45, eyeSize: 16, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' }
   };
 
   const currentSize = sizeMap[size];
@@ -67,95 +67,83 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
       onMouseLeave={handleMouseLeaveWrapper}
       onClick={onStateClick}
     >
-      {/* Outer Fluffy Aura / Floating Halo */}
+      {/* Outer Fluffy Aura / Glowing Ambient Halo */}
       <div
         style={{
           position: 'absolute',
-          inset: -12,
+          inset: -16,
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${currentConfig.glowColor} 0%, rgba(0,0,0,0) 72%)`,
-          transform: isHovered ? 'scale(1.12)' : 'scale(1)',
+          background: `radial-gradient(circle, ${currentConfig.glowColor} 0%, rgba(0,0,0,0) 70%)`,
+          transform: isHovered ? 'scale(1.15)' : 'scale(1)',
           transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.5s ease',
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          opacity: 0.85
         }}
       />
 
-      {/* Floating Body Silhouette */}
+      {/* Fluffy Character Head Container */}
       <div
         style={{
-          width: currentSize.width * 0.85,
-          height: currentSize.height * 0.75,
-          borderRadius: '45% 45% 50% 50%',
-          background: 'linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%)',
-          boxShadow: `0 14px 35px rgba(0,0,0,0.38), inset 0 2px 10px rgba(255,255,255,0.95)`,
+          width: '100%',
+          height: '100%',
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${isHovered ? 'scale(1.03)' : 'scale(1)'}`,
+          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${isHovered ? 'scale(1.04)' : 'scale(1)'}`,
           animation: state === AtlasState.SLEEP ? 'none' : 'atlas-float 4s ease-in-out infinite alternate',
-          transition: 'transform 0.15s ease-out, background 0.3s ease'
+          transition: 'transform 0.15s ease-out'
         }}
       >
-        {/* Glowing Translucent Ear Left */}
-        <div
+        {/* High-Resolution Transparent Character Head Image */}
+        <img
+          src="/assets/atlas_head.png"
+          alt="Atlas Companion Head"
           style={{
-            position: 'absolute',
-            top: -12,
-            left: 15,
-            width: currentSize.width * 0.22,
-            height: currentSize.height * 0.25,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(192, 132, 252, 0.45))',
-            borderRadius: '50% 50% 20% 80%',
-            transform: 'rotate(-20deg)',
-            boxShadow: '0 4px 12px rgba(192, 132, 252, 0.35)'
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            filter: isHovered ? 'brightness(1.06)' : 'none',
+            transition: 'filter 0.3s ease'
           }}
-        />
-        {/* Glowing Translucent Ear Right */}
-        <div
-          style={{
-            position: 'absolute',
-            top: -12,
-            right: 15,
-            width: currentSize.width * 0.22,
-            height: currentSize.height * 0.25,
-            background: 'linear-gradient(225deg, rgba(255,255,255,0.95), rgba(56, 189, 248, 0.45))',
-            borderRadius: '50% 50% 80% 20%',
-            transform: 'rotate(20deg)',
-            boxShadow: '0 4px 12px rgba(56, 189, 248, 0.35)'
+          onError={(e) => {
+            // Fallback to relative path if absolute assets path differs in dev mode
+            (e.target as HTMLImageElement).src = './assets/atlas_head.png';
           }}
         />
 
-        {/* Dark Glass Digital Display Face */}
+        {/* Digital Eyes Overlay Container (Positioned inside Black Visor Screen) */}
         <div
           style={{
-            width: '74%',
-            height: '56%',
-            borderRadius: '30px',
-            background: 'radial-gradient(circle at 50% 30%, #1e293b 0%, #090d16 100%)',
-            border: '1.5px solid rgba(255,255,255,0.18)',
-            boxShadow: 'inset 0 4px 14px rgba(0,0,0,0.85), 0 0 18px rgba(56, 189, 248, 0.25)',
+            position: 'absolute',
+            top: currentSize.visorTop,
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: currentSize.visorWidth,
+            height: currentSize.visorHeight,
+            borderRadius: '24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            pointerEvents: 'none'
           }}
         >
-          {/* Subtle Screen Reflection Glare */}
+          {/* Subtle Glare Lens Reflection */}
           <div
             style={{
               position: 'absolute',
               top: 0,
               left: 0,
               right: 0,
-              height: '42%',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 100%)',
+              height: '45%',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 100%)',
+              zIndex: 2,
               pointerEvents: 'none'
             }}
           />
 
-          {/* HTML5 Canvas Dynamic Digital Eyes */}
+          {/* HTML5 Canvas Dynamic Digital Eyes Matrix */}
           <AtlasEyeCanvas
             state={state}
             eyeSize={currentSize.eyeSize}
@@ -165,11 +153,11 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
         </div>
       </div>
 
-      {/* Embedded Animation Styles */}
+      {/* Floating Breathing Animation Styles */}
       <style>{`
         @keyframes atlas-float {
           0% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-7px) rotate(0.9deg); }
+          50% { transform: translateY(-6px) rotate(0.8deg); }
           100% { transform: translateY(0px) rotate(0deg); }
         }
       `}</style>
