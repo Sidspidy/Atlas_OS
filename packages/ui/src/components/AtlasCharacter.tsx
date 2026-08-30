@@ -8,42 +8,59 @@ interface AtlasCharacterProps {
   size?: 'sm' | 'md' | 'lg' | 'companion';
   interactive?: boolean;
   onStateClick?: () => void;
+  showGlow?: boolean;
 }
 
 export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
   state = AtlasState.IDLE,
   size = 'md',
   interactive = true,
-  onStateClick
+  onStateClick,
+  showGlow = false
 }) => {
+  const [activeState, setActiveState] = useState<AtlasState>(state);
   const [currentConfig, setCurrentConfig] = useState<EyeExpressionConfig>(EYE_EXPRESSION_MAP[state]);
   const [isHovered, setIsHovered] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    setActiveState(state);
     setCurrentConfig(EYE_EXPRESSION_MAP[state] || EYE_EXPRESSION_MAP[AtlasState.IDLE]);
   }, [state]);
 
-  const handleMouseMoveWrapper = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const tiltX = (e.clientY - centerY) / (rect.height / 2);
-    const tiltY = (e.clientX - centerX) / (rect.width / 2);
-    setTilt({ x: tiltX * -6, y: tiltY * 6 });
-  };
+  // Listen to global IPC Atlas State Changes
+  useEffect(() => {
+    if ((window as any).atlasAPI && (window as any).atlasAPI.onStateChanged) {
+      const unsubscribe = (window as any).atlasAPI.onStateChanged((newStateStr: string) => {
+        const newState = newStateStr as AtlasState;
+        setActiveState(newState);
+        setCurrentConfig(EYE_EXPRESSION_MAP[newState] || EYE_EXPRESSION_MAP[AtlasState.IDLE]);
+      });
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      };
+    }
+  }, []);
 
-  const handleMouseLeaveWrapper = () => {
-    setIsHovered(false);
-    setTilt({ x: 0, y: 0 });
-  };
+  // Global mouse tracking across the entire screen
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const tiltX = (e.clientY - centerY) / (window.innerHeight / 2);
+      const tiltY = (e.clientX - centerX) / (window.innerWidth / 2);
+      setTilt({ x: Math.max(-10, Math.min(10, tiltX * -10)), y: Math.max(-10, Math.min(10, tiltY * 10)) });
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    return () => window.removeEventListener('mousemove', handleGlobalMouseMove);
+  }, []);
 
   const sizeMap = {
-    sm: { width: 120, height: 80, eyeCanvasWidth: 70, eyeCanvasHeight: 35, eyeSize: 12, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' },
-    md: { width: 220, height: 147, eyeCanvasWidth: 120, eyeCanvasHeight: 50, eyeSize: 20, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' },
-    lg: { width: 320, height: 213, eyeCanvasWidth: 170, eyeCanvasHeight: 70, eyeSize: 28, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' },
-    companion: { width: 170, height: 113, eyeCanvasWidth: 100, eyeCanvasHeight: 45, eyeSize: 16, visorTop: '68%', visorWidth: '52%', visorHeight: '36%' }
+    sm: { width: 110, height: 165, eyeCanvasWidth: 70, eyeCanvasHeight: 35, eyeSize: 12, visorTop: '45%', visorWidth: '60%', visorHeight: '22%' },
+    md: { width: 170, height: 255, eyeCanvasWidth: 120, eyeCanvasHeight: 50, eyeSize: 20, visorTop: '45%', visorWidth: '60%', visorHeight: '22%' },
+    lg: { width: 240, height: 360, eyeCanvasWidth: 170, eyeCanvasHeight: 70, eyeSize: 28, visorTop: '45%', visorWidth: '60%', visorHeight: '22%' },
+    companion: { width: 140, height: 210, eyeCanvasWidth: 100, eyeCanvasHeight: 45, eyeSize: 16, visorTop: '45%', visorWidth: '60%', visorHeight: '22%' }
   };
 
   const currentSize = sizeMap[size];
@@ -63,23 +80,24 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
         perspective: '600px'
       }}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseMove={handleMouseMoveWrapper}
-      onMouseLeave={handleMouseLeaveWrapper}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={onStateClick}
     >
-      {/* Outer Fluffy Aura / Glowing Ambient Halo */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: -16,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${currentConfig.glowColor} 0%, rgba(0,0,0,0) 70%)`,
-          transform: isHovered ? 'scale(1.15)' : 'scale(1)',
-          transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.5s ease',
-          pointerEvents: 'none',
-          opacity: 0.85
-        }}
-      />
+      {/* Optional Glow */}
+      {showGlow && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: -16,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, ${currentConfig.glowColor} 0%, rgba(0,0,0,0) 70%)`,
+            transform: isHovered ? 'scale(1.15)' : 'scale(1)',
+            transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.5s ease',
+            pointerEvents: 'none',
+            opacity: 0.6
+          }}
+        />
+      )}
 
       {/* Fluffy Character Head Container */}
       <div
@@ -91,13 +109,13 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${isHovered ? 'scale(1.04)' : 'scale(1)'}`,
-          animation: state === AtlasState.SLEEP ? 'none' : 'atlas-float 4s ease-in-out infinite alternate',
-          transition: 'transform 0.15s ease-out'
+          animation: activeState === AtlasState.SLEEP ? 'none' : 'atlas-float 4s ease-in-out infinite alternate',
+          transition: 'transform 0.1s ease-out'
         }}
       >
         {/* High-Resolution Transparent Character Head Image */}
         <img
-          src="/assets/atlas_head.png"
+          src={`/assets/atlas_head.png?v=3`}
           alt="Atlas Companion Head"
           style={{
             width: '100%',
@@ -107,8 +125,7 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
             transition: 'filter 0.3s ease'
           }}
           onError={(e) => {
-            // Fallback to relative path if absolute assets path differs in dev mode
-            (e.target as HTMLImageElement).src = './assets/atlas_head.png';
+            (e.target as HTMLImageElement).src = `./assets/atlas_head.png?v=3`;
           }}
         />
 
@@ -145,7 +162,7 @@ export const AtlasCharacter: React.FC<AtlasCharacterProps> = ({
 
           {/* HTML5 Canvas Dynamic Digital Eyes Matrix */}
           <AtlasEyeCanvas
-            state={state}
+            state={activeState}
             eyeSize={currentSize.eyeSize}
             width={currentSize.eyeCanvasWidth}
             height={currentSize.eyeCanvasHeight}

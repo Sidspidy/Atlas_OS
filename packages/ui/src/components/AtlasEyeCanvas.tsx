@@ -20,16 +20,14 @@ export const AtlasEyeCanvas: React.FC<AtlasEyeCanvasProps> = ({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      const relativeX = e.clientX - rect.left;
-      const relativeY = e.clientY - rect.top;
-      setMousePos({ x: relativeX, y: relativeY });
+      const relX = (e.clientX / Math.max(1, window.innerWidth)) * width;
+      const relY = (e.clientY / Math.max(1, window.innerHeight)) * height;
+      setMousePos({ x: relX, y: relY });
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+  }, [width, height]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,22 +58,21 @@ export const AtlasEyeCanvas: React.FC<AtlasEyeCanvasProps> = ({
         }
       }
 
-      // Calculate Cursor Offset
+      // Scaled Eye Tracking Offset: Gentle for companion mini window (6px), wider for main app (16px)
       let offsetX = 0;
       let offsetY = 0;
       if (config.enableCursorTracking) {
-        const dx = mousePos.x - width / 2;
-        const dy = mousePos.y - height / 2;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const maxOffset = 6;
-        offsetX = (dx / dist) * Math.min(Math.abs(dx * 0.1), maxOffset);
-        offsetY = (dy / dist) * Math.min(Math.abs(dy * 0.1), maxOffset);
+        const dx = (mousePos.x - width / 2) / (width / 2);
+        const dy = (mousePos.y - height / 2) / (height / 2);
+        const maxOffset = eyeSize < 18 ? 6 : 16;
+        offsetX = Math.max(-maxOffset, Math.min(maxOffset, dx * maxOffset));
+        offsetY = Math.max(-maxOffset, Math.min(maxOffset, dy * maxOffset));
       }
 
       const leftEyeCenter = { x: width * 0.3 + offsetX, y: height * 0.5 + offsetY };
       const rightEyeCenter = { x: width * 0.7 + offsetX, y: height * 0.5 + offsetY };
 
-      // Intense Neon Screen Glow
+      // Neon Screen Glow
       ctx.fillStyle = config.primaryColor;
       ctx.shadowColor = config.primaryColor;
       ctx.shadowBlur = 18;
@@ -93,15 +90,15 @@ export const AtlasEyeCanvas: React.FC<AtlasEyeCanvasProps> = ({
         ctx.beginPath();
         ctx.arc(rightEyeCenter.x, rightEyeCenter.y + 2, eyeSize * 0.45, 0.15 * Math.PI, 0.85 * Math.PI);
         ctx.stroke();
-      } else if (config.eyeType === 'equalizer') {
-        // Listening Equalizer Waves
+      } else if (config.eyeType === 'equalizer' || config.eyeType === 'waveform') {
+        // Vocal Speech Waves & Listening Equalizer Bar Matrix
         const barWidth = 4;
         const gap = 5;
-        const totalWidth = 5 * barWidth + 4 * gap;
+        const totalWidth = 6 * barWidth + 5 * gap;
         const startX = (width - totalWidth) / 2;
 
-        for (let i = 0; i < 5; i++) {
-          const h = 8 + Math.sin(elapsed * 9 + i * 1.3) * 14;
+        for (let i = 0; i < 6; i++) {
+          const h = 8 + Math.sin(elapsed * 12 + i * 1.2) * 16;
           const x = startX + i * (barWidth + gap);
           const y = (height - h) / 2;
           ctx.beginPath();

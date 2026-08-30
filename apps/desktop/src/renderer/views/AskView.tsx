@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AtlasState } from '@atlas-os/shared';
 import { AIChatMessage } from '@atlas-os/shared';
 import { GlassPanel, Button } from '@atlas-os/ui';
-import { Send, Bot, User, Terminal, Sparkles, FileCode, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Send, Bot, User, Mic, MicOff } from 'lucide-react';
+import { speakCuteAnimeVoice } from '../utils/speechVoice.js';
 
 interface AskViewProps {
   initialPrompt?: string;
@@ -13,12 +14,16 @@ export const AskView: React.FC<AskViewProps> = ({ initialPrompt }) => {
     {
       id: 'msg_0',
       sender: 'atlas',
-      text: 'Hello! I am Atlas. I inspect your local codebase, run safe development tools, and answer questions grounded in your workspace files. What would you like to build or check today?',
+      text: 'Hello! I am Atlas, your desktop AI companion. Ask me anything, inspect local files, or run system commands!',
       timestamp: new Date().toLocaleTimeString()
     }
   ]);
   const [input, setInput] = useState(initialPrompt || '');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  const recognitionRef = useRef<any>(null);
+  const lastTranscriptRef = useRef<string>('');
 
   const handleSend = async (queryText?: string) => {
     const textToSend = queryText || input;
@@ -35,141 +40,196 @@ export const AskView: React.FC<AskViewProps> = ({ initialPrompt }) => {
     setInput('');
     setIsProcessing(true);
 
-    // Update Atlas State Machine: IDLE -> THINKING -> SEARCHING -> WORKING -> SUCCESS
     if (window.atlasAPI) window.atlasAPI.setState(AtlasState.THINKING);
 
-    setTimeout(async () => {
-      if (window.atlasAPI) window.atlasAPI.setState(AtlasState.SEARCHING);
+    try {
+      const response = await fetch('http://localhost:3001/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: textToSend })
+      });
 
-      try {
-        const response = await fetch('http://localhost:3001/api/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: textToSend })
-        });
+      if (window.atlasAPI) window.atlasAPI.setState(AtlasState.WORKING);
+      const data = await response.json();
 
-        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.WORKING);
-        const data = await response.json();
+      if (data.success && data.message) {
+        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.SPEAKING);
+        setMessages((prev) => [...prev, data.message]);
 
-        if (data.success && data.message) {
-          if (window.atlasAPI) window.atlasAPI.setState(AtlasState.SUCCESS);
-          setMessages((prev) => [...prev, data.message]);
-        }
-      } catch (e) {
-        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.ERROR);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `msg_err_${Date.now()}`,
-            sender: 'atlas',
-            text: 'I encountered an issue connecting to the local backend service.',
-            timestamp: new Date().toLocaleTimeString(),
-            actions: [{ label: 'Check Backend Status', actionId: 'check_status' }]
-          }
-        ]);
-      } finally {
-        setIsProcessing(false);
-        setTimeout(() => {
-          if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
-        }, 2500);
+        // Speak back response with Cute Anime Kid Voice
+        speakCuteAnimeVoice(data.message.text);
       }
-    }, 600);
+    } catch (e) {
+      if (window.atlasAPI) window.atlasAPI.setState(AtlasState.ERROR);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleActionClick = (actionId: string, payload?: any) => {
-    if (actionId === 'open_file') {
-      handleSend(`Read content from file ${payload?.query || 'auth.service.ts'}`);
+  const toggleMicListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      handleSend('what is next JS');
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      if (recognitionRef.current) recognitionRef.current.stop();
+      if (lastTranscriptRef.current.trim()) {
+        handleSend(lastTranscriptRef.current);
+      }
     } else {
-      handleSend(`Explain solution and architectural recommendations for ${actionId}`);
+      setIsListening(true);
+      lastTranscriptRef.current = '';
+      if (window.atlasAPI) window.atlasAPI.setState(AtlasState.LISTENING);
+
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onresult = (event: any) => {
+        let currentText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          currentText += event.results[i][0].transcript;
+        }
+        if (currentText.trim()) {
+          setInput(currentText);
+          lastTranscriptRef.current = currentText;
+        }
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+        const finalQuery = lastTranscriptRef.current;
+        if (finalQuery.trim()) {
+          handleSend(finalQuery);
+        } else {
+          if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
+        }
+      };
+
+      rec.onerror = () => {
+        setIsListening(false);
+        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
+      };
+
+      recognitionRef.current = rec;
+      try {
+        rec.start();
+      } catch (e) {}
     }
   };
 
   return (
     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>AI Command Stream</h2>
-          <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '13px' }}>
-            Interactive AI workspace with tool execution traces & grounded source citations
+          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>AI Chat Assistant & Voice Command</h2>
+          <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '14px' }}>
+            Interactive AI workspace with direct local file access & cute anime kid voice
           </p>
         </div>
       </div>
 
-      {/* Messages Stream */}
-      <GlassPanel style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px' }}>
-        {messages.map((msg) => (
-          <div key={msg.id} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+      {/* Chat Messages Timeline */}
+      <GlassPanel style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px', marginBottom: '16px' }}>
+        {messages.map((msg) => {
+          const isUser = msg.sender === 'user';
+          return (
             <div
+              key={msg.id}
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: msg.sender === 'atlas' ? 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))' : 'var(--bg-glass-hover)',
-                boxShadow: msg.sender === 'atlas' ? 'var(--glow-cyan)' : 'none',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
+                gap: '14px',
+                alignItems: 'flex-start',
+                flexDirection: isUser ? 'row-reverse' : 'row',
+                alignSelf: isUser ? 'flex-end' : 'flex-start',
+                maxWidth: '82%'
               }}
             >
-              {msg.sender === 'atlas' ? <Bot size={20} color="#fff" /> : <User size={20} color="var(--text-main)" />}
-            </div>
-
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontWeight: 600, fontSize: '14px', color: msg.sender === 'atlas' ? 'var(--accent-cyan)' : 'var(--text-main)' }}>
-                  {msg.sender === 'atlas' ? 'Atlas Assistant' : 'You'}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{msg.timestamp}</span>
+              {/* Avatar Icon */}
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: isUser ? 'linear-gradient(135deg, #38bdf8, #818cf8)' : 'linear-gradient(135deg, #a855f7, #38bdf8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: isUser ? '0 0 10px rgba(56, 189, 248, 0.4)' : '0 0 10px rgba(168, 85, 247, 0.4)'
+                }}
+              >
+                {isUser ? <User size={20} color="#fff" /> : <Bot size={20} color="#fff" />}
               </div>
 
-              {/* Message Text */}
-              <div style={{ fontSize: '14px', lineHeight: 1.6, background: 'var(--bg-secondary)', padding: '14px 18px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
-                {msg.text}
+              {/* Message Text Bubble */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  alignItems: isUser ? 'flex-end' : 'flex-start'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '13px', color: isUser ? '#38bdf8' : '#a855f7' }}>
+                    {isUser ? 'You' : 'Atlas Assistant'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{msg.timestamp}</span>
+                </div>
+
+                <div
+                  style={{
+                    fontSize: '14px',
+                    lineHeight: 1.6,
+                    background: isUser
+                      ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)'
+                      : 'rgba(255, 255, 255, 0.04)',
+                    padding: '14px 18px',
+                    borderRadius: isUser ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+                    border: isUser ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    userSelect: 'text',
+                    WebkitUserSelect: 'text',
+                    cursor: 'text',
+                    whiteSpace: 'pre-wrap',
+                    color: '#fff',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  {msg.text}
+                </div>
               </div>
-
-              {/* Executed Tools Trace Cards */}
-              {msg.toolCalls && msg.toolCalls.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                  {msg.toolCalls.map((t, tIdx) => (
-                    <div key={tIdx} style={{ fontSize: '12px', background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Terminal size={14} color="var(--accent-cyan)" />
-                      <span>Executed Tool: <strong style={{ color: 'var(--accent-cyan)' }}>{t.toolName}</strong> ({t.executionTimeMs}ms)</span>
-                      <CheckCircle2 size={14} color="var(--accent-emerald)" style={{ marginLeft: 'auto' }} />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Grounded Sources Badges */}
-              {msg.sources && msg.sources.length > 0 && (
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                  {msg.sources.map((src, sIdx) => (
-                    <span key={sIdx} style={{ fontSize: '11px', background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', padding: '2px 8px', borderRadius: '4px', color: 'var(--accent-purple)' }}>
-                      <FileCode size={10} style={{ marginRight: '4px' }} /> Grounded Source: {src}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Contextual Action Buttons */}
-              {msg.actions && msg.actions.length > 0 && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-                  {msg.actions.map((act, aIdx) => (
-                    <Button key={aIdx} variant="default" style={{ fontSize: '12px', padding: '5px 12px' }} onClick={() => handleActionClick(act.actionId, act.payload)}>
-                      <Sparkles size={12} color="var(--accent-purple)" />
-                      {act.label}
-                    </Button>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </GlassPanel>
 
-      {/* Input Box */}
-      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+      {/* Input Box with Push-to-Talk Voice Mic */}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button
+          onClick={toggleMicListening}
+          style={{
+            background: isListening ? 'rgba(239, 68, 68, 0.3)' : 'rgba(168, 85, 247, 0.15)',
+            border: isListening ? '1px solid #ef4444' : '1px solid rgba(168, 85, 247, 0.4)',
+            borderRadius: '12px',
+            width: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isListening ? '#ef4444' : '#a855f7',
+            cursor: 'pointer',
+            boxShadow: isListening ? '0 0 16px rgba(239, 68, 68, 0.6)' : 'none'
+          }}
+          title="Push to talk voice input"
+        >
+          {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
+
         <input
           type="text"
           value={input}
@@ -179,17 +239,18 @@ export const AskView: React.FC<AskViewProps> = ({ initialPrompt }) => {
           disabled={isProcessing}
           style={{
             flex: 1,
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-glass)',
-            borderRadius: 'var(--radius-md)',
-            padding: '14px 18px',
-            color: 'var(--text-main)',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '12px 18px',
+            color: '#fff',
             fontSize: '14px',
             outline: 'none'
           }}
         />
+
         <Button variant="primary" onClick={() => handleSend()} disabled={isProcessing}>
-          <Send size={16} />
+          <Send size={16} /> Send
         </Button>
       </div>
     </div>

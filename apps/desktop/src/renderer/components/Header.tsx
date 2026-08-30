@@ -1,6 +1,6 @@
 import React from 'react';
-import { Search, Bell, Settings, Moon, Sun, Minimize2, User } from 'lucide-react';
-import { StatusIndicator, useTheme } from '@atlas-os/ui';
+import { Search, Minimize2, User } from 'lucide-react';
+import { StatusIndicator, AtlasEmblemLogo } from '@atlas-os/ui';
 
 interface HeaderProps {
   backendHealth: 'ok' | 'degraded' | 'down';
@@ -8,8 +8,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ backendHealth, onOpenCommandBar }) => {
-  const { theme, toggleTheme } = useTheme();
-
   const handleMinimizeToCompanion = () => {
     if (window.atlasAPI) {
       window.atlasAPI.minimizeToCompanion();
@@ -25,7 +23,7 @@ export const Header: React.FC<HeaderProps> = ({ backendHealth, onOpenCommandBar 
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 28px',
-        background: 'rgba(10, 14, 24, 0.8)',
+        background: 'rgba(10, 14, 24, 0.85)',
         backdropFilter: 'blur(20px)',
         WebkitAppRegion: 'drag',
         zIndex: 9
@@ -48,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ backendHealth, onOpenCommandBar 
         } as React.CSSProperties}
       >
         <Search size={16} color="var(--text-muted)" />
-        <span style={{ fontSize: '13px', color: 'var(--text-muted)', flex: 1 }}>Search anything...</span>
+        <span style={{ fontSize: '13px', color: 'var(--text-muted)', flex: 1 }}>Search AI tools, documents...</span>
         <span
           style={{
             fontSize: '11px',
@@ -63,51 +61,12 @@ export const Header: React.FC<HeaderProps> = ({ backendHealth, onOpenCommandBar 
         </span>
       </div>
 
-      {/* Action Items & Profile Header */}
+      {/* Action Items & System Profile Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '18px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <StatusIndicator
           status={backendHealth === 'ok' ? 'online' : backendHealth === 'degraded' ? 'warning' : 'offline'}
           label={backendHealth === 'ok' ? 'System Operational' : 'Backend Offline'}
         />
-
-        {/* Notification Bell Badge */}
-        <div style={{ position: 'relative', cursor: 'pointer' }}>
-          <Bell size={18} color="var(--text-muted)" />
-          <span
-            style={{
-              position: 'absolute',
-              top: '-4px',
-              right: '-4px',
-              width: '14px',
-              height: '14px',
-              borderRadius: '50%',
-              background: '#ef4444',
-              color: '#fff',
-              fontSize: '9px',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            3
-          </span>
-        </div>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '4px'
-          }}
-          title="Toggle Theme"
-        >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
 
         {/* Companion Mode Button */}
         <button
@@ -130,12 +89,10 @@ export const Header: React.FC<HeaderProps> = ({ backendHealth, onOpenCommandBar 
           Companion
         </button>
 
-        {/* User Profile Avatar */}
+        {/* System Logged-In User Profile Avatar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '8px', borderLeft: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #a855f7, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px rgba(168, 85, 247, 0.4)' }}>
-            <User size={16} color="#fff" />
-          </div>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>Arjun</span>
+          <AtlasEmblemLogo size={32} />
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>ShadowStorm</span>
         </div>
       </div>
     </header>

@@ -72,7 +72,7 @@ export const HomeView: React.FC = () => {
       {/* Top Greeting & Date Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#fff' }}>Good morning, Arjun 👋</h2>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#fff' }}>Good morning, ShadowStorm 👋</h2>
           <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '13px' }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })} • {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
           </p>

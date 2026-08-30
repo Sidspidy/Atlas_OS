@@ -11,17 +11,17 @@ export class FileIndexerService {
 
   private readonly excludedDirectories = new Set([
     'node_modules', '.git', 'dist', 'build', '.next', '.cache',
-    'coverage', '.idea', '.vscode', 'tmp', 'temp'
+    'coverage', '.idea', '.vscode', 'tmp', 'temp',
+    'System Volume Information', '$RECYCLE.BIN', '$Recycle.Bin', 'Recovery', 'Config.Msi', 'Windows', 'Program Files', 'Program Files (x86)'
   ]);
 
   private readonly excludedFiles = new Set([
-    '.env', '.env.local', '.env.production', '.DS_Store', 'thumbs.db'
+    '.env', '.env.local', '.env.production', '.DS_Store', 'thumbs.db', 'pagefile.sys', 'hiberfil.sys', 'dumpstack.log.tmp'
   ]);
 
   constructor(private readonly textExtractor: TextExtractorService) {}
 
   public async indexDirectory(dirPath: string, progressCallback?: (indexed: number, total: number, currentFile: string) => void): Promise<DirectoryScope> {
-    const startTime = Date.now();
     const normalizedDir = path.normalize(dirPath);
 
     if (!fs.existsSync(normalizedDir)) {
@@ -35,30 +35,34 @@ export class FileIndexerService {
     let totalSizeBytes = 0;
 
     for (const filePath of filePathsToScan) {
-      if (progressCallback) {
-        progressCallback(indexedCount, filePathsToScan.length, path.basename(filePath));
-      }
+      try {
+        if (progressCallback) {
+          progressCallback(indexedCount, filePathsToScan.length, path.basename(filePath));
+        }
 
-      const stat = fs.statSync(filePath);
-      const extracted = this.textExtractor.extractText(filePath);
+        const stat = fs.statSync(filePath);
+        const extracted = this.textExtractor.extractText(filePath);
 
-      if (extracted) {
-        const fileRecord: IndexedFileRecord = {
-          id: Buffer.from(filePath).toString('base64url'),
-          path: filePath,
-          fileName: path.basename(filePath),
-          extension: extracted.extension,
-          sizeBytes: stat.size,
-          lineCount: extracted.lineCount,
-          hash: extracted.hash,
-          directoryRoot: normalizedDir,
-          indexedAt: new Date().toISOString(),
-          lastModified: stat.mtime.toISOString()
-        };
+        if (extracted) {
+          const fileRecord: IndexedFileRecord = {
+            id: Buffer.from(filePath).toString('base64url'),
+            path: filePath,
+            fileName: path.basename(filePath),
+            extension: extracted.extension,
+            sizeBytes: stat.size,
+            lineCount: extracted.lineCount,
+            hash: extracted.hash,
+            directoryRoot: normalizedDir,
+            indexedAt: new Date().toISOString(),
+            lastModified: stat.mtime.toISOString()
+          };
 
-        this.indexedFiles.set(filePath, fileRecord);
-        totalSizeBytes += stat.size;
-        indexedCount++;
+          this.indexedFiles.set(filePath, fileRecord);
+          totalSizeBytes += stat.size;
+          indexedCount++;
+        }
+      } catch (e) {
+        // Silently skip unreadable / system locked files
       }
     }
 
@@ -102,6 +106,11 @@ export class FileIndexerService {
   }
 
   private collectFiles(currentDir: string, resultList: string[]) {
+    const dirName = path.basename(currentDir);
+    if (this.excludedDirectories.has(dirName) || dirName.startsWith('$') || dirName.includes('System Volume Information')) {
+      return;
+    }
+
     try {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
@@ -109,7 +118,7 @@ export class FileIndexerService {
         const fullPath = path.join(currentDir, entry.name);
 
         if (entry.isDirectory()) {
-          if (!this.excludedDirectories.has(entry.name)) {
+          if (!this.excludedDirectories.has(entry.name) && !entry.name.startsWith('$') && entry.name !== 'System Volume Information') {
             this.collectFiles(fullPath, resultList);
           }
         } else if (entry.isFile()) {
@@ -119,7 +128,7 @@ export class FileIndexerService {
         }
       }
     } catch (e) {
-      console.warn(`[FileIndexer] Cannot access directory ${currentDir}:`, e);
+      // Gracefully skip directories without read permissions (EPERM / EACCES)
     }
   }
 }

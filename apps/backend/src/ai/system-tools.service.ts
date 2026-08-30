@@ -14,7 +14,7 @@ export class SystemToolsService {
     return path.join(userHome, 'Downloads');
   }
 
-  public listFolderContents(targetPath?: string): { name: string; isDirectory: boolean; sizeMb: string; modified: string }[] {
+  public listFolderContents(targetPath?: string): { name: string; fullPath: string; isDirectory: boolean; sizeMb: string; modified: string }[] {
     const dirToRead = targetPath || this.getUserDownloadsPath();
     if (!fs.existsSync(dirToRead)) {
       return [];
@@ -22,7 +22,7 @@ export class SystemToolsService {
 
     try {
       const items = fs.readdirSync(dirToRead, { withFileTypes: true });
-      return items.slice(0, 30).map((item) => {
+      return items.slice(0, 40).map((item) => {
         const fullPath = path.join(dirToRead, item.name);
         let sizeMb = '0';
         let modified = new Date().toISOString();
@@ -31,10 +31,11 @@ export class SystemToolsService {
           sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
           modified = stats.mtime.toLocaleDateString() + ' ' + stats.mtime.toLocaleTimeString();
         } catch (e) {
-          // ignore permission errors for locked system files
+          // ignore permission errors for system files
         }
         return {
           name: item.name,
+          fullPath,
           isDirectory: item.isDirectory(),
           sizeMb: item.isDirectory() ? 'DIR' : `${sizeMb} MB`,
           modified
@@ -42,6 +43,31 @@ export class SystemToolsService {
       });
     } catch (e) {
       return [];
+    }
+  }
+
+  public async openAnyImageFile(targetDir?: string): Promise<{ success: boolean; fileName: string; filePath: string; message: string }> {
+    const downloadsPath = targetDir || this.getUserDownloadsPath();
+    const items = this.listFolderContents(downloadsPath);
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+
+    const imageFile = items.find((item) => !item.isDirectory && imageExtensions.some((ext) => item.name.toLowerCase().endsWith(ext)));
+
+    if (!imageFile) {
+      return { success: false, fileName: '', filePath: '', message: 'No image files (.png, .jpg) found in Downloads directory.' };
+    }
+
+    try {
+      const cmd = process.platform === 'win32' ? `start "" "${imageFile.fullPath}"` : `open "${imageFile.fullPath}"`;
+      await execAsync(cmd);
+      return {
+        success: true,
+        fileName: imageFile.name,
+        filePath: imageFile.fullPath,
+        message: `Successfully opened "${imageFile.name}" in system default viewer!`
+      };
+    } catch (e: any) {
+      return { success: false, fileName: imageFile.name, filePath: imageFile.fullPath, message: e.message || 'Failed to open image viewer' };
     }
   }
 
@@ -83,7 +109,6 @@ export class SystemToolsService {
     const absPath = path.resolve(targetPath);
     try {
       if (editor === 'antigravity') {
-        // Try antigravity or agy CLI command
         try {
           await execAsync(`antigravity "${absPath}"`);
           return { success: true, editor: 'Antigravity IDE', message: `Opened ${absPath} in Antigravity IDE` };
@@ -92,7 +117,6 @@ export class SystemToolsService {
             await execAsync(`agy "${absPath}"`);
             return { success: true, editor: 'Antigravity IDE', message: `Opened ${absPath} in Antigravity IDE (agy)` };
           } catch (e2) {
-            // Fallback to opening VS Code or default directory explorer
             await execAsync(`code "${absPath}"`);
             return { success: true, editor: 'VS Code Fallback', message: `Opened ${absPath} in Code Editor` };
           }

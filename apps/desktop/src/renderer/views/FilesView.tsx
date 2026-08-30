@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { AtlasState } from '@atlas-os/shared';
 import { DirectoryScope, IndexedFileRecord } from '@atlas-os/shared';
 import { GlassPanel, Button } from '@atlas-os/ui';
-import { FolderPlus, FileText, CheckCircle2, Clock, ShieldCheck, RefreshCw, HardDrive, Filter } from 'lucide-react';
+import { FolderPlus, FileText, CheckCircle2, Clock, ShieldCheck, RefreshCw, HardDrive, Filter, X, Search, Folder, ChevronRight, ArrowUpRight } from 'lucide-react';
 
 export const FilesView: React.FC = () => {
   const [directories, setDirectories] = useState<DirectoryScope[]>([]);
   const [files, setFiles] = useState<IndexedFileRecord[]>([]);
   const [isIndexing, setIsIndexing] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customPathInput, setCustomPathInput] = useState('e:/my_projects');
 
   const loadIndexedFiles = async () => {
     if (window.atlasAPI) {
@@ -24,35 +26,44 @@ export const FilesView: React.FC = () => {
     loadIndexedFiles();
   }, []);
 
-  const handleSelectAndIndexDirectory = async () => {
-    if (!window.atlasAPI) return;
-
-    const selectedPath = await window.atlasAPI.selectDirectory();
-    if (!selectedPath) return;
-
+  const handleStartIndexing = async (pathToIndex: string) => {
+    setIsModalOpen(false);
     setIsIndexing(true);
-    setIndexingProgress(`Scanning directory: ${selectedPath}`);
-    window.atlasAPI.setState(AtlasState.SEARCHING);
+    setIndexingProgress(`Scanning directory: ${pathToIndex}`);
+    if (window.atlasAPI) window.atlasAPI.setState(AtlasState.SEARCHING);
 
     setTimeout(async () => {
-      window.atlasAPI?.setState(AtlasState.WORKING);
-      setIndexingProgress(`Extracting content & metadata...`);
+      if (window.atlasAPI) window.atlasAPI.setState(AtlasState.WORKING);
+      setIndexingProgress(`Extracting content & text metadata...`);
 
-      const result = await window.atlasAPI?.indexDirectory(selectedPath);
+      let result;
+      if (window.atlasAPI) {
+        result = await window.atlasAPI.indexDirectory(pathToIndex);
+      } else {
+        // Fallback fetch if running in direct web mode
+        try {
+          const res = await fetch('http://localhost:3001/api/files/index-directory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ directoryPath: pathToIndex })
+          });
+          result = await res.json();
+        } catch (e) {}
+      }
 
       if (result && result.success) {
-        window.atlasAPI?.setState(AtlasState.SUCCESS);
+        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.SUCCESS);
         setIndexingProgress(`Indexed successfully!`);
         await loadIndexedFiles();
       } else {
-        window.atlasAPI?.setState(AtlasState.ERROR);
+        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.ERROR);
         setIndexingProgress(`Failed to index directory.`);
       }
 
       setTimeout(() => {
         setIsIndexing(false);
         setIndexingProgress('');
-        window.atlasAPI?.setState(AtlasState.IDLE);
+        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
       }, 2000);
     }, 600);
   };
@@ -71,35 +82,152 @@ export const FilesView: React.FC = () => {
           <Button variant="ghost" onClick={loadIndexedFiles}>
             <RefreshCw size={15} /> Refresh
           </Button>
-          <Button variant="primary" onClick={handleSelectAndIndexDirectory} disabled={isIndexing}>
-            <FolderPlus size={16} /> Add Directory to Index
+          <Button variant="primary" onClick={() => setIsModalOpen(true)} disabled={isIndexing}>
+            <FolderPlus size={16} /> Browse & Add Directory
           </Button>
         </div>
       </div>
 
+      {/* Custom Glass File Browser Modal */}
+      {isModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 7, 13, 0.85)',
+            backdropFilter: 'blur(16px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '24px'
+          }}
+        >
+          <GlassPanel
+            glow
+            style={{
+              width: '620px',
+              maxWidth: '90vw',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              padding: '28px',
+              border: '1px solid rgba(168, 85, 247, 0.4)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FolderPlus size={22} color="#a855f7" />
+                <div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>Glass Directory Explorer</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Browse or type any folder path to index in Atlas OS</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Manual Path Input */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Workspace Directory Path:</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  value={customPathInput}
+                  onChange={(e) => setCustomPathInput(e.target.value)}
+                  placeholder="e.g. e:/my_projects or C:/Users/YourName/Downloads"
+                  style={{
+                    flex: 1,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    color: '#fff',
+                    fontSize: '13px',
+                    outline: 'none',
+                    fontFamily: 'monospace'
+                  }}
+                />
+                <Button variant="primary" onClick={() => handleStartIndexing(customPathInput)}>
+                  Index Path
+                </Button>
+              </div>
+            </div>
+
+            {/* Quick Access System Locations */}
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '10px' }}>Quick System Locations:</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                {[
+                  { name: 'Downloads', path: 'C:/Users/Sidhanathan K/Downloads', icon: Folder },
+                  { name: 'Projects Workspace', path: 'e:/my_projects', icon: HardDrive },
+                  { name: 'Documents', path: 'C:/Users/Sidhanathan K/Documents', icon: Folder },
+                  { name: 'Desktop', path: 'C:/Users/Sidhanathan K/Desktop', icon: Folder },
+                  { name: 'C: Drive Root', path: 'C:/', icon: HardDrive },
+                  { name: 'E: Drive Root', path: 'E:/', icon: HardDrive }
+                ].map((loc, i) => {
+                  const Icon = loc.icon;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handleStartIndexing(loc.path)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '10px',
+                        padding: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        color: '#fff',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <Icon size={16} color="#38bdf8" />
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{loc.name}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{loc.path.slice(0, 20)}...</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </GlassPanel>
+        </div>
+      )}
+
       {/* Indexing Live Status Notification */}
       {isIndexing && (
-        <GlassPanel style={{ display: 'flex', alignItems: 'center', gap: '12px', borderColor: 'var(--accent-cyan)' }}>
-          <RefreshCw size={18} color="var(--accent-cyan)" className="atlas-spin" />
-          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>{indexingProgress}</span>
+        <GlassPanel style={{ display: 'flex', alignItems: 'center', gap: '12px', borderColor: '#38bdf8' }}>
+          <RefreshCw size={18} color="#38bdf8" className="atlas-spin" />
+          <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{indexingProgress}</span>
         </GlassPanel>
       )}
 
       {/* Directory Scopes Overview */}
       <GlassPanel style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <HardDrive size={18} color="var(--accent-cyan)" />
+          <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+            <HardDrive size={18} color="#38bdf8" />
             Indexed Workspace Folders ({directories.length})
           </div>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Total Files: <strong style={{ color: 'var(--text-main)' }}>{files.length}</strong>
+            Total Files: <strong style={{ color: '#fff' }}>{files.length}</strong>
           </span>
         </div>
 
         {directories.length === 0 ? (
           <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
-            No directories indexed yet. Click "Add Directory to Index" to select a project folder.
+            No directories indexed yet. Click "Browse & Add Directory" to select a project folder.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -112,8 +240,8 @@ export const FilesView: React.FC = () => {
 
       {/* Exclusions & Privacy Security Panel */}
       <GlassPanel style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <ShieldCheck size={18} color="var(--accent-emerald)" />
+        <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+          <ShieldCheck size={18} color="#34d399" />
           Sensitive Path Exclusions & Privacy Rules
         </div>
         <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
@@ -121,7 +249,7 @@ export const FilesView: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
           {['node_modules', '.git', '.env', 'dist', 'build', '*.exe', '*.png', '*.mp4'].map((ex, i) => (
-            <span key={i} style={{ fontSize: '11px', background: 'var(--bg-secondary)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border-glass)', color: 'var(--text-dim)' }}>
+            <span key={i} style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.04)', padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--text-dim)' }}>
               <Filter size={10} style={{ marginRight: '4px' }} /> Excluded: {ex}
             </span>
           ))}
@@ -150,23 +278,23 @@ const FolderRow: React.FC<{ path: string; files: number; sizeBytes: number; stat
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: 'var(--bg-secondary)',
+        background: 'rgba(255, 255, 255, 0.03)',
         padding: '14px 18px',
-        borderRadius: 'var(--radius-sm)',
-        border: '1px solid var(--border-glass)'
+        borderRadius: '12px',
+        border: '1px solid rgba(255, 255, 255, 0.06)'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <FileText size={20} color="var(--accent-cyan)" />
+        <FileText size={20} color="#38bdf8" />
         <div>
-          <div style={{ fontWeight: 600, fontSize: '14px' }}>{dirPath}</div>
+          <div style={{ fontWeight: 600, fontSize: '14px', color: '#fff' }}>{dirPath}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             {fileCount} files indexed • {formatSize(sizeBytes)}
           </div>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-emerald)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399' }}>
           <CheckCircle2 size={14} /> {status}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-dim)' }}>

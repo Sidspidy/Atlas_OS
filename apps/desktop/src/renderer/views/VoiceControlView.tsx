@@ -3,6 +3,7 @@ import { AtlasState } from '@atlas-os/shared';
 import { GlassPanel, Button } from '@atlas-os/ui';
 import { Mic, MicOff, Volume2, Radio, Sliders, Play, Square, Sparkles } from 'lucide-react';
 import { AudioWaveformVisualizer } from '../components/AudioWaveformVisualizer.js';
+import { speakCuteAnimeVoice } from '../utils/speechVoice.js';
 
 export const VoiceControlView: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
@@ -10,12 +11,13 @@ export const VoiceControlView: React.FC = () => {
   const [wakeWordActive, setWakeWordActive] = useState(true);
   const [transcript, setTranscript] = useState<string>('');
   const [speechResponse, setSpeechResponse] = useState<string>('');
-  const [speechRate, setSpeechRate] = useState<number>(1.0);
+  const [speechRate, setSpeechRate] = useState<number>(1.1);
 
   const recognitionRef = useRef<any>(null);
+  const lastTranscriptRef = useRef<string>('');
 
   useEffect(() => {
-    // Initialize Web Speech Recognition if available
+    // Initialize Web Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const rec = new SpeechRecognition();
@@ -24,15 +26,24 @@ export const VoiceControlView: React.FC = () => {
       rec.lang = 'en-US';
 
       rec.onresult = (event: any) => {
-        const currentResult = Array.from(event.results)
-          .map((res: any) => res[0].transcript)
-          .join('');
-        setTranscript(currentResult);
+        let currentText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          currentText += event.results[i][0].transcript;
+        }
+        if (currentText.trim()) {
+          setTranscript(currentText);
+          lastTranscriptRef.current = currentText;
+        }
       };
 
       rec.onend = () => {
         setIsListening(false);
-        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.THINKING);
+        const finalQuery = lastTranscriptRef.current;
+        if (finalQuery.trim()) {
+          handleProcessQuery(finalQuery);
+        } else {
+          if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
+        }
       };
 
       rec.onerror = (err: any) => {
@@ -64,20 +75,21 @@ export const VoiceControlView: React.FC = () => {
 
   const startListening = () => {
     setIsListening(true);
-    setTranscript('Listening for your voice input...');
+    setTranscript('');
+    lastTranscriptRef.current = '';
     if (window.atlasAPI) window.atlasAPI.setState(AtlasState.LISTENING);
 
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start();
       } catch (e) {
-        console.warn('[VoiceControl] Failed to start recognition:', e);
+        console.warn('[VoiceControl] Speech recognition restart:', e);
       }
     } else {
-      // Fallback timer if browser lacks SpeechRecognition
+      // Fallback demo text if browser lacks microphone hardware API
       setTimeout(() => {
-        handleProcessQuery('Hey Atlas, show workspace files and memory');
-      }, 3000);
+        handleProcessQuery('open file explorer');
+      }, 2500);
     }
   };
 
@@ -87,11 +99,6 @@ export const VoiceControlView: React.FC = () => {
       try {
         recognitionRef.current.stop();
       } catch (e) {}
-    }
-    if (transcript && transcript !== 'Listening for your voice input...') {
-      handleProcessQuery(transcript);
-    } else {
-      if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
     }
   };
 
@@ -109,36 +116,12 @@ export const VoiceControlView: React.FC = () => {
       const responseText = data.message?.text || 'Atlas Voice Assistant operational.';
       setSpeechResponse(responseText);
 
-      // Speak back the response
-      speakText(responseText);
+      // Speak response back with Cute Anime Kid Female Voice
+      setIsSpeaking(true);
+      if (window.atlasAPI) window.atlasAPI.setState(AtlasState.SPEAKING);
+      speakCuteAnimeVoice(responseText, speechRate);
     } catch (e) {
       if (window.atlasAPI) window.atlasAPI.setState(AtlasState.ERROR);
-    }
-  };
-
-  const speakText = (text: string) => {
-    if (!text) return;
-    setIsSpeaking(true);
-    if (window.atlasAPI) window.atlasAPI.setState(AtlasState.SPEAKING);
-
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); // Cancel active speech
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = speechRate;
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
-      };
-      utterance.onerror = () => {
-        setIsSpeaking(false);
-        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
-      };
-      window.speechSynthesis.speak(utterance);
-    } else {
-      setTimeout(() => {
-        setIsSpeaking(false);
-        if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
-      }, 3000);
     }
   };
 
@@ -157,7 +140,7 @@ export const VoiceControlView: React.FC = () => {
         <div>
           <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>Voice System & Speech Pipeline</h2>
           <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '14px' }}>
-            Wake word "Hey Atlas", real-time Speech-to-Text, vocal TTS synthesis & 60fps waveform visualizer
+            Speech-to-Text command engine with Cute Anime Kid Female AI Vocal Synthesis
           </p>
         </div>
 
@@ -192,7 +175,7 @@ export const VoiceControlView: React.FC = () => {
           <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>
             Real-time Audio Spectrum ({isSpeaking ? 'Speaking' : isListening ? 'Listening' : 'Idle'})
           </span>
-          <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>60fps HTML5 Canvas Visualizer</span>
+          <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Cute Anime Kid Female Voice Pipeline</span>
         </div>
         <AudioWaveformVisualizer isListening={isListening} isSpeaking={isSpeaking} />
       </GlassPanel>
@@ -222,7 +205,7 @@ export const VoiceControlView: React.FC = () => {
         </button>
 
         <div style={{ fontSize: '15px', fontWeight: 600, color: isListening ? 'var(--accent-red)' : 'var(--text-main)' }}>
-          {isListening ? 'Listening to Microphone... (Click to finish)' : 'Click Microphone or Press Spacebar for Voice Input'}
+          {isListening ? 'Listening to Microphone... (Click to finish & execute)' : 'Click Microphone or Press Spacebar for Voice Input'}
         </div>
 
         {transcript && (
@@ -236,7 +219,7 @@ export const VoiceControlView: React.FC = () => {
       <GlassPanel style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Volume2 size={18} color="var(--accent-purple)" />
-          Text-to-Speech Vocal Response & Tuning
+          Cute Anime Kid Female AI Vocal Tuning (Pitch 1.65x)
         </div>
 
         {speechResponse && (
@@ -248,12 +231,12 @@ export const VoiceControlView: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <Sliders size={16} color="var(--text-muted)" />
-            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Speech Rate: {speechRate}x</span>
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Speech Speed: {speechRate}x</span>
             <input
               type="range"
               min="0.5"
               max="2.0"
-              step="0.1"
+              step="0.05"
               value={speechRate}
               onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
               style={{ accentColor: 'var(--accent-purple)', cursor: 'pointer' }}
@@ -266,8 +249,8 @@ export const VoiceControlView: React.FC = () => {
                 <Square size={14} color="var(--accent-red)" /> Interrupt Speech
               </Button>
             ) : (
-              <Button variant="primary" onClick={() => speakText(speechResponse || 'Hello, I am Atlas! How can I assist your coding workflow today?')}>
-                <Play size={14} /> Synthesize & Speak
+              <Button variant="primary" onClick={() => speakCuteAnimeVoice(speechResponse || 'Hello master! I am Atlas! How can I help you today?', speechRate)}>
+                <Play size={14} /> Speak (Cute Anime Kid Voice)
               </Button>
             )}
           </div>

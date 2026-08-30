@@ -7,19 +7,14 @@ import { HomeView } from './views/HomeView.js';
 import { CharacterStudioView } from './views/CharacterStudioView.js';
 import { CompanionView } from './views/CompanionView.js';
 import { AskView } from './views/AskView.js';
-import { FilesView } from './views/FilesView.js';
-import { ProjectsView } from './views/ProjectsView.js';
-import { MemoryView } from './views/MemoryView.js';
-import { TerminalView } from './views/TerminalView.js';
-import { VoiceControlView } from './views/VoiceControlView.js';
 import { VisionView } from './views/VisionView.js';
-import { AgentsView } from './views/AgentsView.js';
-import { WorkflowsView } from './views/WorkflowsView.js';
-import { ProactiveView } from './views/ProactiveView.js';
-import { IntegrationsView } from './views/IntegrationsView.js';
-import { ObservabilityView } from './views/ObservabilityView.js';
-import { SecurityView } from './views/SecurityView.js';
-import { SettingsView } from './views/SettingsView.js';
+import { VoiceControlView } from './views/VoiceControlView.js';
+import { PdfAnalyzerView } from './views/PdfAnalyzerView.js';
+import { ImageGeneratorView } from './views/ImageGeneratorView.js';
+import { PdfCreatorView } from './views/PdfCreatorView.js';
+import { WebSearchView } from './views/WebSearchView.js';
+import { CodeCheckerView } from './views/CodeCheckerView.js';
+import { ApiTesterView } from './views/ApiTesterView.js';
 
 declare global {
   interface Window {
@@ -74,32 +69,22 @@ export const App: React.FC = () => {
         return <CharacterStudioView />;
       case 'ask':
         return <AskView initialPrompt={activePrompt} />;
-      case 'files':
-        return <FilesView />;
-      case 'projects':
-        return <ProjectsView />;
-      case 'memory':
-        return <MemoryView />;
-      case 'terminal':
-        return <TerminalView />;
+      case 'pdf-analyzer':
+        return <PdfAnalyzerView />;
+      case 'image-vision':
+        return <VisionView />;
+      case 'image-generator':
+        return <ImageGeneratorView />;
+      case 'pdf-creator':
+        return <PdfCreatorView />;
+      case 'web-search':
+        return <WebSearchView />;
+      case 'code-checker':
+        return <CodeCheckerView />;
+      case 'api-tester':
+        return <ApiTesterView />;
       case 'voice':
         return <VoiceControlView />;
-      case 'vision':
-        return <VisionView />;
-      case 'agents':
-        return <AgentsView />;
-      case 'workflows':
-        return <WorkflowsView />;
-      case 'proactive':
-        return <ProactiveView />;
-      case 'integrations':
-        return <IntegrationsView />;
-      case 'observability':
-        return <ObservabilityView />;
-      case 'security':
-        return <SecurityView />;
-      case 'settings':
-        return <SettingsView />;
       default:
         return <HomeView />;
     }

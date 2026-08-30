@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Home, Zap, Folder, Code, Terminal, CheckSquare, Calendar, Brain, Plug, Settings, Mic, MicOff, Volume2, VolumeX, Sliders, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Home, Zap, FileText, Image, Wand2, FilePlus, Mic, MicOff, Volume2, VolumeX, Sliders, Sparkles, Terminal } from 'lucide-react';
+import { AtlasEmblemLogo } from '@atlas-os/ui';
+import { AtlasState } from '@atlas-os/shared';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer.js';
 
 interface SidebarProps {
@@ -10,20 +12,33 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const [isMicOn, setIsMicOn] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [currentState, setCurrentState] = useState<AtlasState>(AtlasState.IDLE);
 
+  useEffect(() => {
+    if ((window as any).atlasAPI && (window as any).atlasAPI.onStateChanged) {
+      const unsubscribe = (window as any).atlasAPI.onStateChanged((newStateStr: string) => {
+        setCurrentState(newStateStr as AtlasState);
+      });
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      };
+    }
+  }, []);
+
+  // AI Product Suite Navigation
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'character', label: 'Character Studio', icon: Sparkles },
-    { id: 'ask', label: 'Command Center', icon: Zap },
-    { id: 'files', label: 'Files & Search', icon: Folder },
-    { id: 'projects', label: 'Code Assistant', icon: Code },
-    { id: 'terminal', label: 'Terminal', icon: Terminal },
-    { id: 'workflows', label: 'Tasks & Notes', icon: CheckSquare },
-    { id: 'proactive', label: 'Calendar', icon: Calendar },
-    { id: 'memory', label: 'Memories', icon: Brain },
-    { id: 'integrations', label: 'Plugins', icon: Plug },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'home', label: 'Home Dashboard', icon: Home },
+    { id: 'ask', label: 'AI Chat Assistant', icon: Zap },
+    { id: 'pdf-analyzer', label: 'PDF Analyzer', icon: FileText },
+    { id: 'image-vision', label: 'Image Vision', icon: Image },
+    { id: 'image-generator', label: 'AI Image Generator', icon: Wand2 },
+    { id: 'pdf-creator', label: 'PDF Creator', icon: FilePlus },
+    { id: 'api-tester', label: 'API Tester (Postman)', icon: Terminal },
+    { id: 'voice', label: 'Voice Assistant', icon: Mic },
+    { id: 'character', label: 'Character Studio', icon: Sparkles }
   ];
+
+  const isSpeaking = currentState === AtlasState.SPEAKING;
 
   return (
     <aside
@@ -40,30 +55,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
         zIndex: 10
       }}
     >
-      {/* Brand Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingLeft: '8px' }}>
-        <div
-          style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #a855f7, #38bdf8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 16px rgba(168, 85, 247, 0.4)'
-          }}
-        >
-          <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff' }}>A</span>
-        </div>
+      {/* Brand Header with Character Collar Emblem A Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingLeft: '4px' }}>
+        <AtlasEmblemLogo size={36} />
         <div>
-          <div style={{ fontSize: '17px', fontWeight: 700, letterSpacing: '-0.3px', color: '#fff' }}>Atlas OS</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Your AI Companion</div>
+          <div style={{ fontSize: '17px', fontWeight: 700, letterSpacing: '-0.3px', color: '#fff' }}>Atlas AI Suite</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Desktop AI Product Suite</div>
         </div>
       </div>
 
-      {/* Navigation Items */}
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto' }}>
+      {/* AI Product Suite Navigation Items */}
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, overflowY: 'auto' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -75,12 +77,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                padding: '10px 14px',
+                padding: '9px 12px',
                 borderRadius: '10px',
                 border: 'none',
                 background: isActive ? 'linear-gradient(90deg, rgba(168, 85, 247, 0.25), rgba(56, 189, 248, 0.1))' : 'transparent',
                 color: isActive ? '#fff' : 'var(--text-muted)',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: isActive ? 600 : 400,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
@@ -88,64 +90,64 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                 borderLeft: isActive ? '3px solid #a855f7' : '3px solid transparent'
               }}
             >
-              <Icon size={18} color={isActive ? '#a855f7' : 'var(--text-muted)'} />
+              <Icon size={17} color={isActive ? '#a855f7' : 'var(--text-muted)'} />
               {item.label}
             </button>
           );
         })}
       </nav>
 
-      {/* Voice Agent Sidebar Widget (Bottom Card) */}
+      {/* Voice Agent Sidebar Widget */}
       <div
         style={{
-          marginTop: '16px',
+          marginTop: '12px',
           background: 'rgba(20, 26, 42, 0.8)',
           border: '1px solid rgba(168, 85, 247, 0.25)',
           borderRadius: '14px',
-          padding: '14px',
+          padding: '12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px',
+          gap: '8px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ position: 'relative' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #a855f7, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: '14px' }}>🤖</span>
-            </div>
+            <AtlasEmblemLogo size={28} />
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399', position: 'absolute', bottom: 0, right: 0, border: '2px solid #0a0e18' }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>Atlas Voice</div>
-            <div style={{ fontSize: '11px', color: '#a855f7', fontWeight: 500 }}>{isMicOn ? 'Listening...' : 'Standby'}</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#fff' }}>Atlas Anime Voice</div>
+            <div style={{ fontSize: '10px', color: isSpeaking ? '#34d399' : '#a855f7', fontWeight: 500 }}>
+              {isSpeaking ? '🗣️ Speaking Output...' : isMicOn ? 'Cute Voice Active' : 'Standby'}
+            </div>
           </div>
         </div>
 
-        {/* Live Audio Spectrum Canvas */}
-        <div style={{ height: '32px', width: '100%', borderRadius: '6px', overflow: 'hidden', background: 'rgba(0, 0, 0, 0.3)' }}>
-          <AudioWaveformVisualizer isListening={isMicOn} isSpeaking={false} />
+        {/* Live Audio Spectrum Canvas (Animates on isListening OR isSpeaking) */}
+        <div style={{ height: '28px', width: '100%', borderRadius: '6px', overflow: 'hidden', background: 'rgba(0, 0, 0, 0.3)' }}>
+          <AudioWaveformVisualizer isListening={isMicOn || isSpeaking} isSpeaking={isSpeaking} />
         </div>
 
         {/* Voice Control Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '2px' }}>
           <button
             onClick={() => setIsMicOn(!isMicOn)}
-            style={{ background: isMicOn ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '6px', padding: '6px', color: isMicOn ? '#a855f7' : 'var(--text-muted)', cursor: 'pointer' }}
+            style={{ background: isMicOn ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '6px', padding: '5px', color: isMicOn ? '#a855f7' : 'var(--text-muted)', cursor: 'pointer' }}
           >
-            {isMicOn ? <Mic size={14} /> : <MicOff size={14} />}
+            {isMicOn ? <Mic size={13} /> : <MicOff size={13} />}
           </button>
           <button
             onClick={() => setIsMuted(!isMuted)}
-            style={{ background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '6px', padding: '6px', color: isMuted ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer' }}
+            style={{ background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '6px', padding: '5px', color: isMuted ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer' }}
           >
-            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
           <button
             onClick={() => setActiveTab('voice')}
-            style={{ background: 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '6px', padding: '6px', color: 'var(--text-muted)', cursor: 'pointer' }}
+            style={{ background: 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '6px', padding: '5px', color: 'var(--text-muted)', cursor: 'pointer' }}
           >
-            <Sliders size={14} />
+            <Sliders size={13} />
           </button>
         </div>
       </div>
