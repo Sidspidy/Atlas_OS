@@ -2,7 +2,7 @@
 
 > A modern desktop application built with Electron, React, and NestJS featuring an interactive animated digital companion character, local file system control, voice synthesis, and desktop productivity tools.
 
-![Atlas AI Suite UI Preview](./docs/preview.jpg)
+![Atlas AI Suite UI Preview](./docs/preview.png)
 
 ---
 
