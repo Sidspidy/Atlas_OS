@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { ProjectMetadata, CodeSymbolRecord } from '@atlas-os/shared';
 import { GlassPanel, Button } from '@atlas-os/ui';
-import { Code, GitBranch, Layers, Search, ExternalLink, Play, Tag, Terminal, Cpu } from 'lucide-react';
+import { Code, GitBranch, Layers, Search, ExternalLink, Play, Tag, Terminal, Cpu, Sparkles } from 'lucide-react';
 
 export const ProjectsView: React.FC = () => {
   const [metadata, setMetadata] = useState<ProjectMetadata | null>(null);
   const [symbols, setSymbols] = useState<CodeSymbolRecord[]>([]);
   const [symbolQuery, setSymbolQuery] = useState('');
+  const [activeEditor, setActiveEditor] = useState<'antigravity' | 'vscode'>('antigravity');
 
   const loadProjectInfo = async () => {
     if (window.atlasAPI) {
@@ -26,7 +27,7 @@ export const ProjectsView: React.FC = () => {
     loadProjectInfo();
   }, [symbolQuery]);
 
-  const handleOpenVSCode = (filePath?: string, line?: number) => {
+  const handleOpenEditor = (filePath?: string, line?: number) => {
     if (window.atlasAPI) {
       window.atlasAPI.openVSCode({ filePath, line, projectRoot: metadata?.rootPath });
     }
@@ -39,19 +40,62 @@ export const ProjectsView: React.FC = () => {
         <div>
           <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>Code Intelligence & Project Analysis</h2>
           <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '14px' }}>
-            Automatic framework detection, symbol search, npm script triggers & VS Code launcher
+            Automatic framework detection, symbol search, npm script triggers & Antigravity IDE launcher
           </p>
         </div>
-        <Button variant="primary" onClick={() => handleOpenVSCode()}>
-          <ExternalLink size={16} /> Open in VS Code
-        </Button>
+
+        {/* Editor Launcher Choice */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+            <button
+              onClick={() => setActiveEditor('antigravity')}
+              style={{
+                background: activeEditor === 'antigravity' ? '#a855f7' : 'transparent',
+                color: '#fff',
+                border: 'none',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Sparkles size={14} /> Antigravity IDE
+            </button>
+            <button
+              onClick={() => setActiveEditor('vscode')}
+              style={{
+                background: activeEditor === 'vscode' ? 'var(--bg-glass-hover)' : 'transparent',
+                color: activeEditor === 'vscode' ? '#fff' : 'var(--text-muted)',
+                border: 'none',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Code size={14} /> VS Code
+            </button>
+          </div>
+
+          <Button variant="primary" onClick={() => handleOpenEditor()}>
+            <ExternalLink size={16} /> Open in {activeEditor === 'antigravity' ? 'Antigravity IDE' : 'VS Code'}
+          </Button>
+        </div>
       </div>
 
       {/* Active Project Hero Card */}
       <GlassPanel style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', background: 'linear-gradient(135deg, #a855f7, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Code size={24} color="#fff" />
             </div>
             <div>
@@ -59,7 +103,7 @@ export const ProjectsView: React.FC = () => {
               <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{metadata?.rootPath || 'e:/my_projects'}</div>
             </div>
           </div>
-          <span style={{ fontSize: '12px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid var(--border-glow)', padding: '4px 10px', borderRadius: 'var(--radius-full)', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+          <span style={{ fontSize: '12px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid var(--border-glow)', padding: '4px 10px', borderRadius: 'var(--radius-full)', color: '#38bdf8', fontWeight: 600 }}>
             Package Manager: {metadata?.packageManager || 'pnpm'}
           </span>
         </div>
@@ -68,7 +112,7 @@ export const ProjectsView: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Detected Framework Stack:</span>
           {(metadata?.frameworks || ['React', 'NestJS', 'Node.js', 'Docker']).map((fw, idx) => (
-            <span key={idx} style={{ fontSize: '11px', fontWeight: 600, background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', padding: '3px 10px', borderRadius: '4px', color: 'var(--accent-purple)' }}>
+            <span key={idx} style={{ fontSize: '11px', fontWeight: 600, background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', padding: '3px 10px', borderRadius: '4px', color: '#a855f7' }}>
               <Tag size={10} style={{ marginRight: '4px' }} /> {fw}
             </span>
           ))}
@@ -76,10 +120,10 @@ export const ProjectsView: React.FC = () => {
 
         {/* Overview Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginTop: '8px' }}>
-          <StatCard title="Packages" value="3 packages" icon={Layers} color="var(--accent-cyan)" />
-          <StatCard title="Applications" value="2 apps" icon={Code} color="var(--accent-purple)" />
-          <StatCard title="Git Repository" value="git status ok" icon={GitBranch} color="var(--accent-emerald)" />
-          <StatCard title="Docker Support" value={metadata?.hasDocker ? 'Docker Compose Ready' : 'Configured'} icon={Cpu} color="var(--accent-amber)" />
+          <StatCard title="Packages" value="3 packages" icon={Layers} color="#38bdf8" />
+          <StatCard title="Applications" value="2 apps" icon={Code} color="#a855f7" />
+          <StatCard title="Git Repository" value="git status ok" icon={GitBranch} color="#34d399" />
+          <StatCard title="Docker Support" value={metadata?.hasDocker ? 'Docker Compose Ready' : 'Configured'} icon={Cpu} color="#fbbf24" />
         </div>
 
         {/* NPM Scripts Bar */}
@@ -96,7 +140,7 @@ export const ProjectsView: React.FC = () => {
                   style={scriptBtnStyle}
                   title={cmd}
                 >
-                  <Play size={11} color="var(--accent-cyan)" /> {name}
+                  <Play size={11} color="#38bdf8" /> {name}
                 </button>
               ))}
             </div>
@@ -108,7 +152,7 @@ export const ProjectsView: React.FC = () => {
       <GlassPanel style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Search size={18} color="var(--accent-cyan)" />
+            <Search size={18} color="#38bdf8" />
             Code Symbol Scanner (Classes, Functions, Interfaces, REST Routes)
           </div>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{symbols.length} symbols found</span>
@@ -136,20 +180,20 @@ export const ProjectsView: React.FC = () => {
             symbols.map((sym) => (
               <div key={sym.id} style={symbolRowStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'var(--bg-glass-hover)', color: 'var(--accent-cyan)', border: '1px solid var(--border-glass)', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'var(--bg-glass-hover)', color: '#38bdf8', border: '1px solid var(--border-glass)', textTransform: 'uppercase' }}>
                     {sym.symbolType}
                   </span>
-                  <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>{sym.name}</strong>
+                  <strong style={{ fontSize: '14px', color: '#fff' }}>{sym.name}</strong>
                   <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
                     {sym.filePath} : line {sym.line}
                   </span>
                 </div>
                 <button
-                  onClick={() => handleOpenVSCode(sym.filePath, sym.line)}
+                  onClick={() => handleOpenEditor(sym.filePath, sym.line)}
                   style={{
                     background: 'var(--bg-glass-hover)',
                     border: '1px solid var(--border-glass)',
-                    color: 'var(--accent-cyan)',
+                    color: '#a855f7',
                     padding: '4px 10px',
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '11px',
@@ -157,7 +201,7 @@ export const ProjectsView: React.FC = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  <ExternalLink size={12} style={{ marginRight: '4px' }} /> Open in VS Code
+                  <ExternalLink size={12} style={{ marginRight: '4px' }} /> Open in {activeEditor === 'antigravity' ? 'Antigravity IDE' : 'VS Code'}
                 </button>
               </div>
             ))

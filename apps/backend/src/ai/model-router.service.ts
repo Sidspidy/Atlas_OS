@@ -1,19 +1,46 @@
 import { Injectable } from '@nestjs/common';
+import { SystemToolsService } from './system-tools.service';
 
 @Injectable()
 export class ModelRouterService {
+  constructor(private readonly systemTools: SystemToolsService) {}
+
   public async generateCompletion(prompt: string, context?: string): Promise<string> {
-    // 1. Google Gemini Pro API Priority
+    const lowerPrompt = prompt.toLowerCase();
+
+    // 1. Intercept Local System Directory Requests ("downloads folder", "my files", "documents", etc.)
+    if (lowerPrompt.includes('download') || lowerPrompt.includes('downloads folder') || lowerPrompt.includes('list my folders') || lowerPrompt.includes('list out my folders')) {
+      const downloadsPath = this.systemTools.getUserDownloadsPath();
+      const items = this.systemTools.listFolderContents(downloadsPath);
+      if (items.length > 0) {
+        const rows = items.map((i) => `| ${i.isDirectory ? '📁 ' + i.name : '📄 ' + i.name} | ${i.sizeMb} | ${i.modified} |`).join('\n');
+        return `### 📂 Real Downloads Folder Contents (${downloadsPath})\n\n| Item Name | Type / Size | Last Modified |\n| :--- | :--- | :--- |\n${rows}\n\n*Directly inspected from your local operating system.*`;
+      }
+    }
+
+    // 2. Intercept System Telemetry Requests ("cpu", "ram", "system stats", "memory")
+    if (lowerPrompt.includes('cpu') || lowerPrompt.includes('ram') || lowerPrompt.includes('system status') || lowerPrompt.includes('memory usage')) {
+      const stats = await this.systemTools.getRealSystemStats();
+      return `### 💻 Live System Hardware Telemetry\n\n- **CPU Utilization:** \`${stats.cpuPercent}%\`\n- **RAM Free / Total:** \`${stats.ramFreeGb} GB / ${stats.ramTotalGb} GB\` (${stats.ramPercent}% Used)\n- **Operating System:** \`${stats.osName}\` (${stats.platform} ${stats.arch})\n- **System Uptime:** \`${stats.uptimeHours} hours\`\n\n*Real OS metrics fetched from local system kernels.*`;
+    }
+
+    // 3. Intercept Antigravity IDE / Code Editor Requests
+    if (lowerPrompt.includes('antigravity') || lowerPrompt.includes('open editor') || lowerPrompt.includes('open code')) {
+      const res = await this.systemTools.openInEditor('antigravity', 'e:/my_projects');
+      return `### 🚀 Antigravity IDE Integration\n\n${res.message}\n\n*Launched target workspace in Antigravity IDE.*`;
+    }
+
+    // 4. Google Gemini Pro Cloud Completion
     if (process.env.GEMINI_API_KEY) {
       const geminiKey = process.env.GEMINI_API_KEY;
-      const systemInstruction = 'You are Atlas, a personal AI desktop companion. Be helpful, direct, intelligent, grounded, and concise.';
+      const systemInstruction = 'You are Atlas, a personal AI desktop assistant. Give direct, intelligent, and accurate responses.';
       const fullPrompt = context ? `${systemInstruction}\n\nLocal Workspace Context:\n${context}\n\nUser Question:\n${prompt}` : `${systemInstruction}\n\nUser Question:\n${prompt}`;
 
       const modelsToTry = [
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-latest',
-        'gemini-2.5-pro',
-        'gemini-1.5-flash'
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-2.0-flash',
+        'gemini-2.5-flash'
       ];
 
       for (const modelName of modelsToTry) {
@@ -43,50 +70,14 @@ export class ModelRouterService {
             }
           }
         } catch (e) {
-          console.warn(`[ModelRouter] Gemini model ${modelName} failed, trying next model...`, e);
+          console.warn(`[ModelRouter] Gemini model ${modelName} call failed, trying next...`);
         }
       }
     }
 
-    // 2. OpenAI API Priority
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are Atlas, a personal AI desktop companion. Be helpful, direct, intelligent, and grounded in the local computer context.'
-              },
-              {
-                role: 'user',
-                content: context ? `Local Workspace Context:\n${context}\n\nUser Question:\n${prompt}` : prompt
-              }
-            ],
-            temperature: 0.3
-          })
-        });
-
-        const data = await response.json();
-        if (data.choices && data.choices[0]?.message?.content) {
-          return data.choices[0].message.content;
-        }
-      } catch (e) {
-        console.warn('[ModelRouter] OpenAI completion call failed, using local assistant fallback:', e);
-      }
-    }
-
-    // 3. Fallback
-    return this.generateLocalAssistantResponse(prompt, context);
-  }
-
-  private generateLocalAssistantResponse(prompt: string, context?: string): string {
-    return `Atlas Assistant: I received your request "${prompt}". I am inspecting your local workspace files and ready for your development commands. ${context ? `\n\nGrounded Context:\n${context}` : ''}`;
+    // 5. Real Local Fallback Output (Clean & Grounded)
+    const items = this.systemTools.listFolderContents();
+    const folderSummary = items.slice(0, 5).map((i) => i.name).join(', ');
+    return `Atlas AI: Here are your active local workspace items: **${folderSummary}**. Ask me to open files, check hardware telemetry, or run code commands in Antigravity IDE!`;
   }
 }

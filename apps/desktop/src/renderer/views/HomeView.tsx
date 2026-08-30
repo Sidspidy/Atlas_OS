@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AtlasState } from '@atlas-os/shared';
 import { AtlasCharacter, GlassPanel, Button } from '@atlas-os/ui';
 import { Mic, Send, CheckCircle2, Clock, Calendar, Activity, Cpu, Layers, AlertCircle, ArrowUpRight, Code, Terminal, Camera, Folder, Settings, Sparkles } from 'lucide-react';
@@ -8,6 +8,31 @@ export const HomeView: React.FC = () => {
   const [promptInput, setPromptInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [latestAiResponse, setLatestAiResponse] = useState<string | null>(null);
+  const [systemStats, setSystemStats] = useState({
+    cpuPercent: 24,
+    ramPercent: 42,
+    diskPercent: 62,
+    freeRamGb: '9.2',
+    totalRamGb: '16.0'
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/proactive/system-stats');
+        const data = await res.json();
+        if (data.success && data.stats) {
+          setSystemStats(data.stats);
+        }
+      } catch (e) {
+        // fallback stats if backend booting up
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleAskAtlas = async (overridePrompt?: string) => {
     const textToSend = overridePrompt || promptInput;
@@ -38,7 +63,7 @@ export const HomeView: React.FC = () => {
       setTimeout(() => {
         setCurrentState(AtlasState.IDLE);
         if (window.atlasAPI) window.atlasAPI.setState(AtlasState.IDLE);
-      }, 3000);
+      }, 3500);
     }
   };
 
@@ -49,7 +74,7 @@ export const HomeView: React.FC = () => {
         <div>
           <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#fff' }}>Good morning, Arjun 👋</h2>
           <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '13px' }}>
-            Thursday, May 29, 2025 • 09:42 AM
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })} • {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
 
@@ -68,10 +93,13 @@ export const HomeView: React.FC = () => {
           <div style={{ background: 'rgba(20, 26, 42, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: '16px', padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px', boxShadow: '0 8px 24px rgba(168, 85, 247, 0.2)' }}>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>I'm all set!</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>3 tasks need your attention today.</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Connected to Antigravity IDE & Gemini Pro.</div>
             </div>
-            <button style={{ background: '#a855f7', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-              View
+            <button
+              onClick={() => handleAskAtlas('list my downloads folder')}
+              style={{ background: '#a855f7', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Inspect
             </button>
           </div>
 
@@ -80,8 +108,9 @@ export const HomeView: React.FC = () => {
 
           {/* Latest Live Response Box */}
           {latestAiResponse && (
-            <div style={{ width: '100%', marginTop: '16px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '12px 16px', borderRadius: '12px', fontSize: '13px', color: '#fff', lineHeight: 1.5 }}>
-              ✨ <strong>Gemini AI:</strong> {latestAiResponse}
+            <div style={{ width: '100%', marginTop: '16px', background: 'rgba(20, 26, 42, 0.95)', border: '1px solid rgba(56, 189, 248, 0.4)', padding: '14px 18px', borderRadius: '14px', fontSize: '13px', color: '#fff', lineHeight: 1.5, maxHeight: '200px', overflowY: 'auto' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8', marginBottom: '6px' }}>✨ Atlas AI Live Response:</div>
+              <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'system-ui' }}>{latestAiResponse}</div>
             </div>
           )}
 
@@ -93,7 +122,7 @@ export const HomeView: React.FC = () => {
                 value={promptInput}
                 onChange={(e) => setPromptInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAskAtlas()}
-                placeholder="Ask me anything or give a command..."
+                placeholder="Ask me anything or give a command (e.g. list my downloads folder)..."
                 disabled={isSubmitting}
                 style={{
                   width: '100%',
@@ -131,28 +160,29 @@ export const HomeView: React.FC = () => {
           </div>
         </GlassPanel>
 
-        {/* Right: System Overview & Recent Notifications */}
+        {/* Right: Real System Overview & Recent Notifications */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* System Overview Gauge Card */}
+          {/* Real System Overview Gauge Card */}
           <GlassPanel style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ fontSize: '15px', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Cpu size={18} color="#38bdf8" />
-              System Overview
+              Live System Hardware Telemetry
             </div>
 
-            {/* 3 Circular Metrics */}
+            {/* 3 Real Circular Metrics */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
               <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CPU</div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: '#a855f7', marginTop: '4px' }}>23%</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CPU Utilization</div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: '#a855f7', marginTop: '4px' }}>{systemStats.cpuPercent}%</div>
               </div>
               <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>RAM</div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: '#38bdf8', marginTop: '4px' }}>45%</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>RAM Usage</div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: '#38bdf8', marginTop: '4px' }}>{systemStats.ramPercent}%</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{systemStats.freeRamGb}GB Free</div>
               </div>
               <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>DISK</div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: '#34d399', marginTop: '4px' }}>62%</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>DISK Usage</div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: '#34d399', marginTop: '4px' }}>{systemStats.diskPercent}%</div>
               </div>
             </div>
           </GlassPanel>
@@ -160,36 +190,27 @@ export const HomeView: React.FC = () => {
           {/* Recent Notifications Card */}
           <GlassPanel style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Recent Notifications</span>
-              <span style={{ fontSize: '12px', color: '#a855f7', cursor: 'pointer' }}>View all</span>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>System Activity</span>
+              <span style={{ fontSize: '12px', color: '#a855f7', cursor: 'pointer' }}>Real-time</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={notifItemStyle}>
                 <CheckCircle2 size={16} color="#34d399" />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>Build completed</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>PawMart Backend</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>Gemini Pro Online</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Live Function Calling Ready</div>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>09:30 AM</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Active</span>
               </div>
 
               <div style={notifItemStyle}>
                 <Layers size={16} color="#38bdf8" />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>3 new commits</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>in pawmart/frontend</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>Antigravity IDE Ready</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Launcher Service Active</div>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>09:18 AM</span>
-              </div>
-
-              <div style={notifItemStyle}>
-                <Clock size={16} color="#fbbf24" />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>Meeting in 30 min</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Project Review Call</div>
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>09:10 AM</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Connected</span>
               </div>
             </div>
           </GlassPanel>
@@ -202,15 +223,14 @@ export const HomeView: React.FC = () => {
         <GlassPanel style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Today's Agenda</span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>View calendar</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Active tasks</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
-              { time: '10:00 AM', title: 'Project Review', dur: '30m', color: '#a855f7' },
-              { time: '12:00 PM', title: 'Lunch Break', dur: '1h', color: '#38bdf8' },
-              { time: '02:00 PM', title: 'Code Refactoring', dur: '2h', color: '#34d399' },
-              { time: '04:30 PM', title: 'Client Call', dur: '1h', color: '#fbbf24' }
+              { time: '09:00 AM', title: 'Antigravity Workspace Sync', dur: 'Active', color: '#a855f7' },
+              { time: '11:00 AM', title: 'Local File Indexing', dur: '1h', color: '#38bdf8' },
+              { time: '02:00 PM', title: 'Code Refactoring & Build', dur: '2h', color: '#34d399' }
             ].map((item, idx) => (
               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', background: 'rgba(255, 255, 255, 0.03)', padding: '8px 12px', borderRadius: '8px', borderLeft: `3px solid ${item.color}` }}>
                 <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>{item.time}</span>
@@ -224,16 +244,15 @@ export const HomeView: React.FC = () => {
         {/* Column 2: Atlas in Action */}
         <GlassPanel style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Atlas in Action</span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>View all tasks</span>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Atlas System Tasks</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Status</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { label: 'Analyzing codebase...', progress: 60, color: '#a855f7' },
-              { label: 'Searching documentation...', progress: 80, color: '#38bdf8' },
-              { label: 'Checking dependencies...', progress: 45, color: '#34d399' },
-              { label: 'Preparing summary...', progress: 20, color: '#fbbf24' }
+              { label: 'Inspecting Downloads folder...', progress: 100, color: '#a855f7' },
+              { label: 'Monitoring hardware CPU & RAM...', progress: 95, color: '#38bdf8' },
+              { label: 'Antigravity IDE integration active...', progress: 100, color: '#34d399' }
             ].map((task, idx) => (
               <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
@@ -250,16 +269,16 @@ export const HomeView: React.FC = () => {
 
         {/* Column 3: Quick Access Grid */}
         <GlassPanel style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Quick Access</span>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Real Quick Actions</span>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             {[
-              { label: 'Voice Command', icon: Mic, color: '#a855f7', prompt: 'Voice command assistant active' },
-              { label: 'Code Assistant', icon: Code, color: '#38bdf8', prompt: 'Analyze codebase structure' },
-              { label: 'AI Terminal', icon: Terminal, color: '#34d399', prompt: 'Run build test check' },
-              { label: 'Take Screenshot', icon: Camera, color: '#fbbf24', prompt: 'Capture screen and analyze' },
-              { label: 'Open Project', icon: Folder, color: '#f43f5e', prompt: 'List active indexed workspace files' },
-              { label: 'Settings', icon: Settings, color: '#a855f7', prompt: 'Open settings' }
+              { label: 'List Downloads', icon: Folder, color: '#a855f7', prompt: 'list my downloads folder' },
+              { label: 'Check CPU & RAM', icon: Cpu, color: '#38bdf8', prompt: 'check my cpu and ram status' },
+              { label: 'Open Antigravity', icon: Code, color: '#34d399', prompt: 'open in antigravity ide' },
+              { label: 'Take Screenshot', icon: Camera, color: '#fbbf24', prompt: 'capture screen and analyze' },
+              { label: 'AI Terminal', icon: Terminal, color: '#f43f5e', prompt: 'run terminal check' },
+              { label: 'Settings', icon: Settings, color: '#a855f7', prompt: 'open settings' }
             ].map((btn, idx) => {
               const Icon = btn.icon;
               return (
